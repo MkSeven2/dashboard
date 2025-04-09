@@ -126,7 +126,25 @@ document.addEventListener('DOMContentLoaded', () => {
             scheduleReconnect(); // Attempt to reconnect
         };
     }
+function updateSelectionUI() {
+         const selectedCount = selectedStudentIds.size;
+         selectedCountSpan.textContent = `(${selectedCount} Selected)`;
 
+         // Enable/disable bulk action buttons based on selection
+         const bulkButtons = document.querySelectorAll('.view-toolbar .actions .btn');
+         bulkButtons.forEach(btn => btn.disabled = (selectedCount === 0));
+
+         // Update selectAll checkbox state (checked, indeterminate, or unchecked)
+         const totalRendered = studentGrid.querySelectorAll('.student-card').length;
+          if (totalRendered === 0) {
+               selectAllCheckbox.checked = false;
+               selectAllCheckbox.indeterminate = false;
+          } else {
+               selectAllCheckbox.checked = selectedCount === totalRendered;
+               selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalRendered;
+          }
+     }
+    
     function scheduleReconnect() {
         if (reconnectTimeoutId || (teacherSocket && teacherSocket.readyState === WebSocket.OPEN)) {
             return; // Already scheduled or connected
