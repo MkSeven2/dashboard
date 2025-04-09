@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saber Teacher Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #connection-status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        #connection-status.connected { background-color: #28a745; color: white; }
+        #connection-status.disconnected { background-color: #dc3545; color: white; }
+        #connection-status.connecting { background-color: #ffc107; color: black; }
+
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        #controls-panel {
+            width: 250px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+        #controls-panel h3 { margin-top: 0; }
+        #controls-panel label { display: block; margin-top: 10px; }
+        #controls-panel input[type="text"],
+        #controls-panel input[type="number"],
+        #controls-panel textarea {
+            width: 95%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #controls-panel button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+        }
+        #controls-panel button:hover { background-color: #0056b3; }
+        #controls-panel select {
+             width: 100%;
+             padding: 8px;
+             margin-top: 5px;
+        }
+
+        #students-container {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap; /* Arrange students in rows */
+            align-content: flex-start; /* Align items to the top */
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto; /* Allow scrolling for students */
+        }
+        .student-card {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            width: 450px; /* Adjust as needed */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            max-height: 700px; /* Limit card height */
+        }
+        .student-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            word-break: break-all; /* Wrap long emails/IDs */
+        }
+        .screenshot-container {
+             text-align: center;
+             margin-bottom: 15px;
+             border-bottom: 1px solid #eee;
+             padding-bottom: 10px;
+        }
+         .screenshot-container h4 { margin-bottom: 5px; }
+         .screenshot-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            background-color: #f0f0f0; /* Placeholder bg */
+         }
+         .screenshot-container p { font-size: 0.8em; color: #666; margin-top: 5px;}
+
+         .student-controls button {
+             background-color: #6c757d;
+             color: white;
+             border: none;
+             padding: 5px 10px;
+             border-radius: 4px;
+             cursor: pointer;
+             margin-right: 5px;
+             margin-bottom: 10px;
+             font-size: 0.9em;
+         }
+         .student-controls button:hover { background-color: #5a6268; }
+         .student-controls button.lock { background-color: #dc3545; }
+         .student-controls button.lock:hover { background-color: #c82333; }
+         .student-controls button.unlock { background-color: #28a745; }
+         .student-controls button.unlock:hover { background-color: #218838; }
+
+
+         .student-tabs {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            font-size: 0.9em;
+            flex-grow: 1; /* Take remaining space */
+            overflow-y: auto; /* Allow tab list scrolling */
+            max-height: 200px; /* Limit tab list height */
+         }
+         .student-tabs h4 { margin: 0 0 5px 0; }
+         .student-tabs ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+         }
+         .student-tabs li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dotted #eee;
+         }
+         .student-tabs li span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px; /* Prevent long titles/urls from breaking layout */
+            display: inline-block;
+            cursor: default; /* Indicate it's text */
+         }
+         .student-tabs li button {
+             background-color: #dc3545;
+             color: white;
+             border: none;
+             padding: 2px 6px;
+             font-size: 0.8em;
+             border-radius: 3px;
+             cursor: pointer;
+             margin-left: 10px;
+         }
+          .student-tabs li button:hover { background-color: #c82333; }
+          .student-tabs li img.favicon {
+             width: 16px;
+             height: 16px;
+             margin-right: 5px;
+             vertical-align: middle;
+          }
+
+          /* Utility */
+          .hidden { display: none; }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Saber Teacher Dashboard</h1>
+        <div id="connection-status" class="disconnected">Disconnected</div>
+    </header>
+    <main>
+        <aside id="controls-panel">
+            <h3>Global Controls</h3>
+
+            <label for="target-student-select">Target Student:</label>
+            <select id="target-student-select">
+                <option value="">-- Select Student --</option>
+                </select>
+
+            <hr>
+
+             <label for="blocklist-input">Blocklist (one pattern per line):</label>
+             <textarea id="blocklist-input" rows="5" placeholder="*://*.example.com/*"></textarea>
+             <button id="update-blocklist-btn">Update Blocklist for Selected</button>
+
+             <hr>
+
+             <label for="screenshot-interval-input">Screenshot Interval (ms):</label>
+             <input type="number" id="screenshot-interval-input" value="5000" min="1000">
+             <button id="update-interval-btn">Set Interval for Selected</button>
+
+             <hr>
+
+             <button id="lock-all-btn" style="background-color: #dc3545;">Lock All Students</button>
+             <button id="unlock-all-btn" style="background-color: #28a745;">Unlock All Students</button>
+
+
+        </aside>
+        <section id="students-container">
+            <p style="color: #666;">Waiting for students to connect...</p>
+        </section>
+    </main>
+
+    <script>
+        // Use the actual URL Render gave you!
+const wsUrl = 'wss://saber-websocket-server.onrender.com'; // <-- CHANGE THIS LINE
+        let teacherSocket;
+        const studentsContainer = document.getElementById('students-container');
+        const connectionStatusDiv = document.getElementById('connection-status');
+        const targetStudentSelect = document.getElementById('target-student-select');
+        const blocklistInput = document.getElementById('blocklist-input');
+        const updateBlocklistBtn = document.getElementById('update-blocklist-btn');
+        const screenshotIntervalInput = document.getElementById('screenshot-interval-input');
+        const updateIntervalBtn = document.getElementById('update-interval-btn');
+        const lockAllBtn = document.getElementById('lock-all-btn');
+        const unlockAllBtn = document.getElementById('unlock-all-btn');
+
+
+        let connectedStudents = new Map(); // Store clientId -> email mapping
+
+        function updateConnectionStatus(status, message = '') {
+            connectionStatusDiv.textContent = status + (message ? ` (${message})` : '');
+            connectionStatusDiv.className = status.toLowerCase(); // Add class for styling
+        }
+
+        function connectWebSocket() {
+            updateConnectionStatus('Connecting');
+            teacherSocket = new WebSocket(wsUrl);
+
+            teacherSocket.onopen = () => {
+                updateConnectionStatus('Connected');
+                // Identify this connection as the teacher dashboard
+                sendMessageToServer({ type: 'teacher_connect' });
+                console.log('WebSocket connection established.');
+            };
+
+            teacherSocket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                     console.log('Message received:', message.type); // Less verbose logging
+
+                    switch (message.type) {
+                        case 'initial_student_list':
+                            studentsContainer.innerHTML = ''; // Clear placeholders/old cards
+                            targetStudentSelect.innerHTML = '<option value="">-- Select Student --</option>'; // Clear select
+                            connectedStudents.clear();
+                            message.data.forEach(student => {
+                                addStudentCard(student.clientId, student.email);
+                                addStudentToSelect(student.clientId, student.email);
+                                connectedStudents.set(student.clientId, student.email);
+                            });
+                            updatePlaceholderVisibility();
+                            break;
+
+                        case 'student_connected':
+                            addStudentCard(message.data.clientId, message.data.email);
+                            addStudentToSelect(message.data.clientId, message.data.email);
+                            connectedStudents.set(message.data.clientId, message.data.email);
+                            updatePlaceholderVisibility();
+                            break;
+
+                        case 'student_disconnected':
+                            removeStudentCard(message.data.clientId);
+                            removeStudentFromSelect(message.data.clientId);
+                            connectedStudents.delete(message.data.clientId);
+                            updatePlaceholderVisibility();
+                            break;
+
+                        case 'student_screenshot':
+                            handleStudentScreenshot(message.data.clientId, message.data.payload.imageData);
+                            break;
+
+                        case 'student_tabs_update': // Handle full list update
+                        case 'student_tab_created': // Could handle these more incrementally
+                        case 'student_tab_updated': // if performance becomes an issue
+                        case 'student_tab_removed':
+                            // Assuming server sends full list on updates for simplicity now
+                            if (message.data && message.data.payload && message.type === 'student_tabs_update') {
+                                handleStudentTabs(message.data.clientId, message.data.payload);
+                            } else if (message.data && message.data.payload && message.type !== 'student_tabs_update') {
+                                // For non-full updates, maybe request a full list or handle incrementally
+                                console.log(`Received incremental tab update type: ${message.type}. Requesting full list as fallback.`);
+                                // Requesting full list (server needs to handle 'get_tabs' from teacher)
+                                sendCommand(message.data.clientId, 'get_tabs', {});
+                            }
+                            break;
+
+                         case 'command_failed':
+                             alert(`Command failed for student ${message.data.targetClientId}: ${message.data.reason}`);
+                             break;
+
+                         case 'pong': // Response to our ping (if we implement sending pings)
+                            console.log('Received pong from server.');
+                            break;
+
+                         case 'error': // Error message from server
+                            alert(`Server Error: ${message.message}`);
+                            break;
+
+                        default:
+                             console.log('Received unhandled message type:', message.type);
+                    }
+                } catch (error) {
+                    console.error('Error processing message or invalid JSON:', event.data, error);
+                }
+            };
+
+            teacherSocket.onclose = (event) => {
+                updateConnectionStatus('Disconnected', event.reason || `Code: ${event.code}`);
+                console.log('WebSocket connection closed. Attempting reconnect...');
+                // Clear UI or show disconnected state more prominently
+                studentsContainer.innerHTML = '<p style="color: #dc3545;">Connection lost. Attempting to reconnect...</p>';
+                 targetStudentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+                 connectedStudents.clear();
+                // Simple reconnect logic
+                setTimeout(connectWebSocket, 5000); // Try reconnecting every 5 seconds
+            };
+
+            teacherSocket.onerror = (error) => {
+                updateConnectionStatus('Error');
+                console.error('WebSocket Error:', error);
+                // The 'onclose' event will usually fire immediately after 'onerror'
+            };
+        }
+
+        function sendMessageToServer(payload) {
+            if (teacherSocket && teacherSocket.readyState === WebSocket.OPEN) {
+                try {
+                    teacherSocket.send(JSON.stringify(payload));
+                } catch (error) {
+                    console.error("Error sending message:", error);
+                }
+            } else {
+                console.warn("WebSocket not open. Message not sent:", payload);
+                // alert("Cannot send command: Not connected to the server.");
+            }
+        }
+
+        // --- DOM Manipulation ---
+
+        function addStudentCard(clientId, email) {
+             if (document.getElementById(`student-${clientId}`)) return; // Prevent duplicates
+
+            const card = document.createElement('div');
+            card.className = 'student-card';
+            card.id = `student-${clientId}`;
+            card.innerHTML = `
+                <h3>${email || 'N/A'} <small>(${clientId})</small></h3>
+                <div class="screenshot-container">
+                    <img id="screenshot-img-${clientId}" src="" alt="Student Screenshot Loading..." width="400" height="225">
+                    <p>Last updated: <span id="screenshot-time-${clientId}">Never</span></p>
+                </div>
+                <div class="student-controls">
+                    <button class="lock" onclick="sendCommand('${clientId}', 'lock_screen', {message: 'Screen Locked by Teacher'})">Lock</button>
+                    <button class="unlock" onclick="sendCommand('${clientId}', 'unlock_screen', {})">Unlock</button>
+                    <button onclick="promptAndOpenTab('${clientId}')">Open Tab</button>
+                    <button onclick="promptAndSendAnnouncement('${clientId}')">Announce</button>
+                </div>
+                <div class="student-tabs" id="tabs-${clientId}">
+                    <h4>Tabs:</h4>
+                    <ul><li>Loading...</li></ul>
+                </div>
+            `;
+            studentsContainer.appendChild(card);
+        }
+
+        function removeStudentCard(clientId) {
+            const card = document.getElementById(`student-${clientId}`);
+            if (card) card.remove();
+        }
+
+         function addStudentToSelect(clientId, email) {
+            if (Array.from(targetStudentSelect.options).some(opt => opt.value === clientId)) return; // Don't add duplicates
+            const option = document.createElement('option');
+            option.value = clientId;
+            option.textContent = `${email || 'N/A'} (${clientId})`;
+            targetStudentSelect.appendChild(option);
+        }
+
+         function removeStudentFromSelect(clientId) {
+            const option = targetStudentSelect.querySelector(`option[value="${clientId}"]`);
+            if (option) option.remove();
+        }
+
+        function handleStudentScreenshot(clientId, imageDataUrl) {
+            const imgElement = document.getElementById(`screenshot-img-${clientId}`);
+            const timeElement = document.getElementById(`screenshot-time-${clientId}`);
+            if (imgElement) {
+                imgElement.src = imageDataUrl;
+                if (timeElement) timeElement.textContent = new Date().toLocaleTimeString();
+            }
+        }
+
+        function handleStudentTabs(clientId, tabsData) {
+            const tabsContainer = document.getElementById(`tabs-${clientId}`);
+            if (!tabsContainer) return;
+
+            const ul = tabsContainer.querySelector('ul') || document.createElement('ul');
+            ul.innerHTML = ''; // Clear previous tabs
+
+            if (tabsData && typeof tabsData === 'object' && Object.keys(tabsData).length > 0) {
+                 Object.values(tabsData).forEach(tab => {
+                    if (!tab || !tab.id) return; // Skip invalid tab data
+                    const li = document.createElement('li');
+                    // Use a placeholder or default icon if favIconUrl is missing/invalid
+                    const favIconUrl = tab.favIconUrl && tab.favIconUrl.startsWith('http') ? tab.favIconUrl : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEUlEQVR42mNkIAAYIBAAJBtnBAAAAABJRU5ErkJggg=='; // Simple transparent pixel
+
+                    li.innerHTML = `
+                        <img src="${favIconUrl}" class="favicon" alt="favicon" onerror="this.style.display='none'">
+                        <span title="${tab.url || ''}">${tab.title || 'Untitled Tab'}</span>
+                        <button onclick="sendCommand('${clientId}', 'close_tab', {tabId: ${tab.id}})">Close</button>
+                    `;
+                    ul.appendChild(li);
+                });
+            } else {
+                ul.innerHTML = '<li>No open tabs or data unavailable.</li>';
+            }
+             if (!tabsContainer.querySelector('ul')) { // Append if first time
+                 tabsContainer.appendChild(ul);
+             }
+        }
+
+        // --- Command Sending Wrappers ---
+
+        function sendCommand(targetClientId, command, commandData) {
+             console.log(`Sending command: ${command} to ${targetClientId}`, commandData);
+             sendMessageToServer({
+                type: 'teacher_command',
+                data: {
+                    targetClientId: targetClientId,
+                    command: command,
+                    data: commandData // Payload specific to the command
+                }
+            });
+        }
+
+        function promptAndOpenTab(clientId) {
+            const url = prompt(`Enter URL to open for student ${clientId}:`, 'https://');
+            if (url) {
+                sendCommand(clientId, 'open_tab', { url: url });
+            }
+        }
+
+        function promptAndSendAnnouncement(clientId) {
+            const message = prompt(`Enter announcement message for student ${clientId}:`);
+            if (message) {
+                sendCommand(clientId, 'send_announcement', { message: message, duration: 7000 }); // 7 sec duration
+            }
+        }
+
+        // --- Global Controls Logic ---
+
+        updateBlocklistBtn.onclick = () => {
+            const selectedClientId = targetStudentSelect.value;
+            if (!selectedClientId) {
+                alert("Please select a target student first.");
+                return;
+            }
+            const patterns = blocklistInput.value
+                .split('\n') // Split by newline
+                .map(p => p.trim()) // Trim whitespace
+                .filter(p => p.length > 0); // Remove empty lines
+            sendCommand(selectedClientId, 'update_blocklist', { blockedSites: patterns });
+            alert(`Blocklist update sent to ${selectedClientId}.`);
+        };
+
+        updateIntervalBtn.onclick = () => {
+            const selectedClientId = targetStudentSelect.value;
+            if (!selectedClientId) {
+                alert("Please select a target student first.");
+                return;
+            }
+            const interval = parseInt(screenshotIntervalInput.value, 10);
+            if (isNaN(interval) || interval < 1000) {
+                alert("Invalid interval. Must be a number >= 1000ms.");
+                return;
+            }
+            sendCommand(selectedClientId, 'set_screenshot_interval', { interval: interval });
+             alert(`Screenshot interval update sent to ${selectedClientId}.`);
+        };
+
+        lockAllBtn.onclick = () => {
+            if (confirm(`Are you sure you want to lock ALL ${connectedStudents.size} connected students?`)) {
+                connectedStudents.forEach((email, clientId) => {
+                    sendCommand(clientId, 'lock_screen', { message: 'Screen Locked by Teacher' });
+                });
+            }
+        };
+
+        unlockAllBtn.onclick = () => {
+             if (confirm(`Are you sure you want to unlock ALL ${connectedStudents.size} connected students?`)) {
+                 connectedStudents.forEach((email, clientId) => {
+                     sendCommand(clientId, 'unlock_screen', {});
+                 });
+             }
+        };
+
+
+         function updatePlaceholderVisibility() {
+            const placeholder = studentsContainer.querySelector('p');
+            if (connectedStudents.size > 0) {
+                if (placeholder) placeholder.classList.add('hidden');
+            } else {
+                if (placeholder) {
+                     placeholder.classList.remove('hidden');
+                     placeholder.textContent = "Waiting for students to connect...";
+                } else {
+                     // Add placeholder if it doesn't exist and no students
+                     const p = document.createElement('p');
+                     p.style.color = '#666';
+                     p.textContent = "Waiting for students to connect...";
+                     studentsContainer.appendChild(p);
+                }
+            }
+        }
+
+        // --- Initialisation ---
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket(); // Start connection attempt when DOM is ready
+             updatePlaceholderVisibility(); // Show initial placeholder
+        });
+
+    </script>
+</body>
+</html>
