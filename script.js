@@ -22,7 +22,7 @@
     const CONFIG = {
         // !!! IMPORTANT: Update this URL to your actual WebSocket server endpoint !!!
         // wsUrl: 'wss://your-websocket-server-url.onrender.com', // Example Render URL
-        wsUrl: 'ws://localhost:8080', // Example Local URL (use wss for secure connections)
+        wsUrl: 'wss://extension.mkseven1.com', // Example Local URL (use wss for secure connections)
         defaultScreenshotInterval: 5000, // ms
         minScreenshotInterval: 1000, // ms
         reconnectDelay: 5000, // ms
