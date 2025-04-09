@@ -59,14 +59,14 @@
                 <div id="session-controls">
                     <select id="session-select" class="control-select hidden">
                         <option value="">Select Active Session</option>
-                    </select>
+                        </select>
                     <span id="current-session-info" class="session-info">No Active Session</span>
                      <button id="start-session-btn" class="btn btn-primary"><i class="fas fa-play"></i> Start Session</button>
                      <button id="end-session-btn" class="btn btn-danger hidden"><i class="fas fa-stop"></i> End Session</button>
                 </div>
                 <div class="user-menu">
                     <i class="fas fa-user-circle fa-2x"></i>
-                </div>
+                    </div>
             </div>
         </header>
 
@@ -83,7 +83,7 @@
                     <button id="open-tab-selected-btn" class="btn btn-secondary" title="Open Tab for Selected"><i class="fas fa-external-link-alt"></i> Open Tab</button>
                     <button id="announce-selected-btn" class="btn btn-secondary" title="Send Announcement to Selected"><i class="fas fa-bullhorn"></i> Announce</button>
                     <button id="block-site-selected-btn" class="btn btn-secondary" title="Update Blocklist for Selected"><i class="fas fa-ban"></i> Block Site</button>
-                    </div>
+                 </div>
                  <div class="view-options">
                     <label for="sort-students">Sort by:</label>
                     <select id="sort-students" class="control-select">
@@ -92,117 +92,129 @@
                         </select>
                      <label for="filter-students">Filter:</label>
                     <input type="text" id="filter-students" placeholder="Filter by name/email..." class="control-input">
-                 </div>
+                </div>
             </div>
             <div id="student-grid" class="student-grid">
                 <p id="loading-students-placeholder">Loading student data...</p>
                 <p id="no-students-placeholder" class="hidden">No students connected in this session.</p>
-            </div>
+                </div>
         </div>
 
         <div id="sessions-view" class="view">
-            <h2>Manage Sessions</h2>
-            <p>Configure and manage your teaching sessions here.</p>
-            <div class="session-management">
-                <button id="create-new-session-btn" class="btn btn-primary">Create New Session</button>
-                <h3>Available Sessions:</h3>
-                <ul id="session-list">
-                    <li>Loading sessions...</li>
-                </ul>
+             <h2>Manage Sessions</h2>
+             <p>Configure and manage your teaching sessions here.</p>
+             <div class="session-management">
+                 <button id="create-new-session-btn" class="btn btn-primary">Create New Session</button> <h3>Available Sessions:</h3>
+                 <ul id="session-list">
+                     <li>Loading sessions...</li> </ul>
                  <h3>Start Ad-Hoc Session:</h3>
                  <input type="text" id="adhoc-session-name" placeholder="Optional Session Name" class="control-input">
-                 <button id="start-adhoc-btn" class="btn btn-secondary">Start Ad-Hoc</button>
-            </div>
+                 <button id="start-adhoc-btn" class="btn btn-secondary">Start Ad-Hoc</button> </div>
         </div>
 
         <div id="students-view" class="view">
              <h2>Student Roster</h2>
              <p>View and manage students enrolled in your classes or sessions.</p>
               <div class="view-toolbar">
-                </div>
+                 <input type="text" id="roster-filter-input" placeholder="Filter roster..." class="control-input"> </div>
              <table id="student-roster-table" class="data-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="roster-select-all"></th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Current Session</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="student-roster-body">
-                    <tr><td colspan="6">Loading student roster...</td></tr>
-                </tbody>
+                 <thead>
+                     <tr>
+                         <th><input type="checkbox" id="roster-select-all"></th>
+                         <th>Name</th>
+                         <th>Email</th>
+                         <th>Status</th>
+                         <th>Current Session</th>
+                         <th>Actions</th>
+                     </tr>
+                 </thead>
+                 <tbody id="student-roster-body">
+                     <tr><td colspan="6">Loading student roster...</td></tr> </tbody>
              </table>
         </div>
 
-
         <div id="settings-view" class="view">
-            <h2>Dashboard Settings</h2>
-            <div class="settings-section">
-                <h3>Default Blocklist</h3>
-                <p>Set default URL patterns to block during sessions. Applied when starting a new session unless overridden.</p>
-                <textarea id="default-blocklist-input" rows="8" placeholder="*://*.youtube.com/*&#10;*://*.coolmathgames.com/*" class="control-textarea"></textarea>
-                <button id="save-default-blocklist-btn" class="btn btn-primary">Save Default Blocklist</button>
-            </div>
+             <h2>Dashboard Settings</h2>
              <div class="settings-section">
-                <h3>Default Screenshot Interval</h3>
-                <p>Set the default frequency (in milliseconds) for capturing student screenshots during sessions.</p>
-                <input type="number" id="default-interval-input" value="5000" min="2000" class="control-input">
-                <span>ms (Minimum: 2000ms)</span>
-                <button id="save-default-interval-btn" class="btn btn-primary">Save Default Interval</button>
-            </div>
-            </div>
+                 <h3>Default Blocklist</h3>
+                 <p>Set default URL patterns to block during sessions. Applied when starting a new session unless overridden.</p>
+                 <textarea id="default-blocklist-input" rows="8" placeholder="*://*.youtube.com/*&#10;*://*.coolmathgames.com/*" class="control-textarea"></textarea>
+                 <button id="save-default-blocklist-btn" class="btn btn-primary">Save Default Blocklist</button> </div>
+              <div class="settings-section">
+                 <h3>Default Screenshot Interval</h3>
+                 <p>Set the default frequency (in milliseconds) for capturing student screenshots during sessions.</p>
+                 <input type="number" id="default-interval-input" value="5000" min="2000" step="100" class="control-input">
+                 <span>ms (Minimum: 2000ms)</span>
+                 <button id="save-default-interval-btn" class="btn btn-primary">Save Default Interval</button> </div>
+             </div>
 
     </main>
 
     <div id="open-tab-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('open-tab-modal')">&times;</span>
-            <h3>Open Tab for Selected Students</h3>
+            <span class="close-btn" data-modal-id="open-tab-modal">×</span> <h3>Open Tab for Selected Students</h3>
             <label for="open-tab-url">URL:</label>
-            <input type="url" id="open-tab-url" placeholder="https://example.com" class="control-input">
-            <button id="confirm-open-tab-btn" class="btn btn-primary">Open Tab</button>
-        </div>
+            <input type="url" id="open-tab-url" placeholder="https://example.com" class="control-input" required>
+            <button id="confirm-open-tab-btn" class="btn btn-primary">Open Tab</button> </div>
     </div>
 
     <div id="announce-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('announce-modal')">&times;</span>
-            <h3>Send Announcement to Selected Students</h3>
+            <span class="close-btn" data-modal-id="announce-modal">×</span> <h3>Send Announcement to Selected Students</h3>
             <label for="announce-message">Message:</label>
-            <textarea id="announce-message" rows="3" placeholder="Enter your announcement..." class="control-textarea"></textarea>
+            <textarea id="announce-message" rows="3" placeholder="Enter your announcement..." class="control-textarea" required></textarea>
              <label for="announce-duration">Duration (ms):</label>
-             <input type="number" id="announce-duration" value="5000" min="1000" class="control-input">
-            <button id="confirm-announce-btn" class="btn btn-primary">Send Announcement</button>
-        </div>
+             <input type="number" id="announce-duration" value="5000" min="1000" step="500" class="control-input" required>
+            <button id="confirm-announce-btn" class="btn btn-primary">Send Announcement</button> </div>
     </div>
 
      <div id="block-site-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('block-site-modal')">&times;</span>
-            <h3>Update Blocklist for Selected Students</h3>
+            <span class="close-btn" data-modal-id="block-site-modal">×</span> <h3>Update Blocklist for Selected Students</h3>
             <p>Enter patterns (one per line) to block. This will overwrite their current blocklist for this session.</p>
             <label for="block-patterns-input">Block Patterns:</label>
             <textarea id="block-patterns-input" rows="5" placeholder="*://*.example-game-site.com/*" class="control-textarea"></textarea>
-            <button id="confirm-block-site-btn" class="btn btn-primary">Update Blocklist</button>
-        </div>
+            <button id="confirm-block-site-btn" class="btn btn-primary">Update Blocklist</button> </div>
     </div>
 
+    <div id="student-detail-modal" class="modal modal-large hidden">
+         <div class="modal-content">
+             <span class="close-btn" data-modal-id="student-detail-modal">×</span> <h3 class="student-detail-title">Student: <span id="detail-modal-student-name">Name</span></h3>
+             <div class="student-detail-container">
+                 <div class="student-screen-large-view">
+                      <img id="detail-modal-screenshot" src="placeholder-screenshot.png" alt="Student screen large view">
+                      <div class="detail-actions">
+                          <button class="btn btn-sm btn-secondary" id="detail-modal-refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                           <button class="btn btn-sm btn-secondary" id="detail-modal-lock-btn"><i class="fas fa-lock"></i> Lock</button>
+                           <button class="btn btn-sm btn-secondary" id="detail-modal-unlock-btn"><i class="fas fa-unlock"></i> Unlock</button>
+                           <button class="btn btn-sm btn-secondary" id="detail-modal-message-btn"><i class="fas fa-comment-alt"></i> Message</button>
+                      </div>
+                 </div>
+                 <div class="student-tabs-view">
+                      <h4>Active Tab</h4>
+                      <div id="detail-modal-active-tab" class="tab-item active-tab">
+                          <img src="placeholder-favicon.png" alt="favicon" class="favicon">
+                          <div class="tab-info">
+                              <span class="tab-title">Loading...</span>
+                              <span class="tab-url"></span>
+                          </div>
+                          <button class="btn btn-sm btn-danger close-tab-btn"><i class="fas fa-times"></i> Close</button> </div>
+                      <h4>Other Tabs (<span id="detail-modal-other-tabs-count">0</span>)</h4>
+                      <ul id="detail-modal-other-tabs-list" class="tab-list">
+                          <li>No other tabs found.</li>
+                      </ul>
+                 </div>
+             </div>
+         </div>
+     </div>
+
+
     <template id="student-card-template">
-        <div class="student-card" data-client-id="">
-            <div class="card-header">
+        <div class="student-card" data-client-id=""> <div class="card-header">
                  <input type="checkbox" class="student-select-checkbox checkbox-input" aria-label="Select student">
-                 <span class="status-dot disconnected" title="Disconnected"></span>
-                 <span class="student-name">Student Name/Email</span>
-                 <div class="card-menu-btn"> <i class="fas fa-ellipsis-v"></i> </div>
-            </div>
-            <div class="screenshot-preview">
-                <img src="placeholder-screenshot.png" alt="Student screen preview" class="screenshot-img">
-                <div class="no-screenshot hidden">No Screenshot Available</div>
-                 <span class="last-updated">Updated: Never</span>
-            </div>
+                 <span class="status-dot disconnected" title="Disconnected"></span> <span class="student-name">Student Name/Email</span> <div class="card-menu-btn"> <i class="fas fa-ellipsis-v"></i> </div> </div>
+            <div class="screenshot-preview" data-client-id="">
+                <img src="placeholder-screenshot.png" alt="Student screen preview" class="screenshot-img"> <div class="no-screenshot hidden">No Screenshot Available</div> <span class="last-updated">Updated: Never</span> </div>
             <div class="active-tab-info">
                  <img src="placeholder-favicon.png" alt="favicon" class="favicon">
                  <span class="tab-title" title="Website URL">Loading tab info...</span>
@@ -214,24 +226,23 @@
                 <button class="action-btn message-btn" title="Send Message"><i class="fas fa-comment-alt"></i></button>
                 <button class="action-btn close-tab-btn" title="Close Current Tab"><i class="fas fa-times-circle"></i></button>
             </div>
-             <div class="tab-list-preview hidden"> <ul></ul>
-            </div>
-        </div>
+             </div>
     </template>
 
      <template id="student-roster-row-template">
-        <tr data-client-id="">
-            <td><input type="checkbox" class="roster-select-checkbox"></td>
-            <td class="roster-name">Student Name</td>
-            <td class="roster-email">student@email.com</td>
-            <td class="roster-status"><span class="status-badge disconnected">Offline</span></td>
-            <td class="roster-session">None</td>
-            <td class="roster-actions">
-                 <button class="btn btn-sm btn-secondary" title="View Details"><i class="fas fa-eye"></i></button>
-                 <button class="btn btn-sm btn-secondary" title="Message"><i class="fas fa-comment-alt"></i></button>
+        <tr data-client-id=""> <td><input type="checkbox" class="roster-select-checkbox"></td>
+            <td class="roster-name">Student Name</td> <td class="roster-email">student@email.com</td> <td class="roster-status"><span class="status-badge offline">Offline</span></td> <td class="roster-session">None</td> <td class="roster-actions">
+                 <button class="btn btn-sm btn-secondary view-details-btn" title="View Details"><i class="fas fa-eye"></i></button>
+                 <button class="btn btn-sm btn-secondary message-roster-btn" title="Message"><i class="fas fa-comment-alt"></i></button>
                  </td>
         </tr>
     </template>
+
+    <template id="detail-modal-tab-item-template">
+         <li class="tab-item" data-tab-id=""> <img src="placeholder-favicon.png" alt="favicon" class="favicon"> <div class="tab-info">
+                  <span class="tab-title">Tab Title</span> <span class="tab-url">http://tab.url</span> </div>
+              <button class="btn btn-sm btn-danger close-tab-btn"><i class="fas fa-times"></i> Close</button> </li>
+      </template>
 
 
     <script src="script.js"></script>
