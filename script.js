@@ -1,150 +1,161 @@
-// script.js - Revised based on provided server.js logic
-
+/**
+ * Saber Teacher Dashboard - Frontend Logic
+ * Revision Date: 2025-04-09
+ *
+ * This script handles the user interface interactions, WebSocket communication
+ * with the Saber server, and dynamic updates of the teacher dashboard.
+ */
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Saber Teacher Dashboard Initializing - Revised...");
+    console.log("Saber Teacher Dashboard Initializing - Enhanced Revision...");
 
     // --- Configuration ---
-    const WS_URL = "wss://extension.mkseven1.com"; // Make sure this matches your server
-    const PLACEHOLDER_FAVICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEUlEQVR42mNkIAAYIBAAJBtnBAAAAABJRU5ErkJggg=='; // Transparent pixel
-    const PLACEHOLDER_SCREENSHOT = 'placeholder.png'; // Use a real placeholder image path if available
+    const WS_URL = "wss://extension.mkseven1.com"; // Ensure this matches your deployed server URL
+    const PLACEHOLDER_FAVICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEUlEQVR42mNkIAAYIBAAJBtnBAAAAABJRU5ErkJggg==';
+    const PLACEHOLDER_SCREENSHOT = 'placeholder.png'; // Path to a default placeholder image
+    const RECONNECT_DELAY_MS = 5000; // Delay between WebSocket reconnect attempts
+    const MAX_RECONNECT_ATTEMPTS = 10; // Maximum number of reconnect attempts
 
-    // --- DOM Elements (Assuming IDs from your HTML structure) ---
-    const body = document.body;
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const mainContent = document.getElementById('main-content');
-    const navList = document.querySelector('.nav-list');
-    const views = document.querySelectorAll('.view');
-    const currentViewTitle = document.getElementById('view-title'); // Changed ID from HTML
-    const connectionStatusDiv = document.getElementById('connection-status');
-    const connectionStatusText = connectionStatusDiv?.querySelector('.text');
-    const studentGrid = document.getElementById('student-grid');
-    const loadingPlaceholder = document.getElementById('loading-placeholder'); // Changed ID from HTML
-    const noStudentsPlaceholder = document.getElementById('no-students-placeholder'); // Changed ID from HTML
-    const studentCardTemplate = document.getElementById('student-card-template');
+    // --- DOM Element Cache ---
+    // Cache frequently accessed DOM elements for performance
+    const domCache = {
+        body: document.body,
+        sidebar: document.getElementById('sidebar'),
+        sidebarToggle: document.getElementById('sidebar-toggle'),
+        mainContent: document.getElementById('main-content'),
+        navList: document.querySelector('.nav-list'),
+        views: document.querySelectorAll('.view'),
+        currentViewTitle: document.getElementById('view-title'), // Matches suggested HTML
+        connectionStatusDiv: document.getElementById('connection-status'),
+        connectionStatusText: document.getElementById('connection-status')?.querySelector('.text'),
+        studentGrid: document.getElementById('student-grid'),
+        loadingPlaceholder: document.getElementById('loading-placeholder'), // Matches suggested HTML
+        noStudentsPlaceholder: document.getElementById('no-students-placeholder'), // Matches suggested HTML
+        studentCardTemplate: document.getElementById('student-card-template'),
+        // Toolbar
+        selectAllCheckbox: document.getElementById('select-all-students'), // Matches suggested HTML
+        selectedCountSpan: document.getElementById('selected-count'),
+        actionButtons: document.querySelectorAll('.view-toolbar .actions .btn'), // Select all action buttons
+        sortStudentsSelect: document.getElementById('sort-students'),
+        filterStudentsInput: document.getElementById('student-search'), // Matches suggested HTML
+        // Modals
+        openTabModal: document.getElementById('open-tab-modal'),
+        openTabUrlInput: document.getElementById('open-tab-url'),
+        confirmOpenTabBtn: document.getElementById('confirm-open-tab'),
+        announceModal: document.getElementById('announce-modal'),
+        announceMessageInput: document.getElementById('announce-message'),
+        announceDurationInput: document.getElementById('announce-duration'),
+        confirmAnnounceBtn: document.getElementById('confirm-announce'),
+        // Student Detail Modal
+        studentDetailModal: document.getElementById('student-detail-modal'),
+        detailModalStudentName: document.getElementById('detail-student-name'), // Matches suggested HTML
+        detailModalScreenshot: document.getElementById('detail-screenshot'), // Matches suggested HTML
+        detailModalActiveTabEl: document.getElementById('detail-active-tab'), // Matches suggested HTML
+        detailModalTabListEl: document.getElementById('detail-tab-list'), // Matches suggested HTML
+        detailModalActivityLogEl: document.getElementById('detail-activity-log') // Matches suggested HTML
+    };
 
-    // Toolbar (Screens View - Assuming IDs from your HTML)
-    const selectAllCheckbox = document.getElementById('select-all-students'); // Changed ID from HTML
-    const selectedCountSpan = document.getElementById('selected-count');
-    const lockSelectedBtn = document.getElementById('lock-selected'); // Changed ID from HTML
-    const unlockSelectedBtn = document.getElementById('unlock-selected'); // Changed ID from HTML
-    const openTabSelectedBtn = document.getElementById('open-tab-selected'); // Changed ID from HTML
-    const closeTabSelectedBtn = document.getElementById('close-tab-selected'); // Changed ID from HTML
-    const announceSelectedBtn = document.getElementById('announce-selected'); // Changed ID from HTML
-    const blockSiteSelectedBtn = document.getElementById('block-site-selected'); // Changed ID from HTML
-    const focusSelectedBtn = document.getElementById('focus-selected'); // Changed ID from HTML
-    const sortStudentsSelect = document.getElementById('sort-students');
-    const filterStudentsInput = document.getElementById('student-search'); // Changed ID from HTML
-
-    // Action Modals (Assuming IDs from your HTML)
-    const openTabModal = document.getElementById('open-tab-modal');
-    const openTabUrlInput = document.getElementById('open-tab-url');
-    const confirmOpenTabBtn = document.getElementById('confirm-open-tab');
-    const announceModal = document.getElementById('announce-modal');
-    const announceMessageInput = document.getElementById('announce-message');
-    const announceDurationInput = document.getElementById('announce-duration');
-    const confirmAnnounceBtn = document.getElementById('confirm-announce');
-    // Add references for block site / focus modals if created
-
-    // Large Student Detail Modal & Elements (Assuming IDs from your HTML)
-    const studentDetailModal = document.getElementById('student-detail-modal');
-    const detailModalStudentName = document.getElementById('detail-student-name'); // Changed ID from HTML
-    const detailModalScreenshot = document.getElementById('detail-screenshot'); // Changed ID from HTML
-    const detailModalActiveTabEl = document.getElementById('detail-active-tab'); // Changed ID from HTML
-    const detailModalTabListEl = document.getElementById('detail-tab-list'); // Changed ID from HTML
-    const detailModalActivityLogEl = document.getElementById('detail-activity-log'); // Changed ID from HTML
-    // Add references for buttons inside detail modal if needed for event listeners
-
-    // Settings View Controls (Example - Assuming IDs from your HTML)
-    // const defaultBlocklistInput = document.getElementById('default-blocklist');
-    // const saveDefaultBlocklistBtn = defaultBlocklistInput?.nextElementSibling;
-
-    // --- State Variables ---
+    // --- Application State ---
     let teacherSocket = null;
-    let connectedStudents = new Map(); // clientId -> { clientId, email, userId?, status, currentTabs?, activeTab?, lastScreenshotUrl?, lastUpdate }
+    let connectedStudents = new Map(); // Map<clientId, StudentState>
     let selectedStudentIds = new Set();
     let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 10;
-    const RECONNECT_DELAY = 5000;
     let reconnectTimeoutId = null;
-    let currentSort = 'name'; // Default sort
-    let currentFilter = ''; // Default filter
-    let activeViewId = 'screens'; // Default view ID (matches HTML)
+    let currentSort = 'name'; // Initial sort criteria
+    let currentFilter = ''; // Initial filter query
+    let activeViewId = 'screens'; // Initial active view
 
+    // --- Type Definitions (for clarity, not enforced by JS) ---
+    /**
+     * @typedef {object} TabData
+     * @property {number} id
+     * @property {string} [url]
+     * @property {string} [title]
+     * @property {boolean} active
+     * @property {boolean} [audible]
+     * @property {string} [favIconUrl]
+     * @property {number} [windowId]
+     * @property {string} [status] - e.g., 'loading', 'complete'
+     */
+    /**
+     * @typedef {object} StudentState
+     * @property {string} clientId
+     * @property {string} email
+     * @property {string} [userId]
+     * @property {'connected' | 'disconnected' | 'locked'} status
+     * @property {Object<string, TabData>} [currentTabs] - Map of tabId to TabData
+     * @property {TabData | null} [activeTab] - Cached active tab data
+     * @property {string | null} [lastScreenshotUrl] - Base64 data URL or null
+     * @property {number} lastUpdate - Timestamp of the last update received
+     */
 
-    // --- WebSocket Functions ---
+    // --- WebSocket Management ---
+    /**
+     * Establishes or re-establishes the WebSocket connection.
+     */
     function connectWebSocket() {
         if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
         reconnectTimeoutId = null;
 
         if (teacherSocket && (teacherSocket.readyState === WebSocket.OPEN || teacherSocket.readyState === WebSocket.CONNECTING)) {
-            console.log("WS: Already open or connecting.");
+            console.info("WS: Already open or connecting.");
             return;
         }
 
         updateConnectionStatus('connecting', 'Connecting...');
-        console.log(`WS: Attempting to connect to ${WS_URL}...`);
+        console.info(`WS: Attempting connection to ${WS_URL}...`);
         try {
             teacherSocket = new WebSocket(WS_URL);
         } catch (error) {
-            console.error("WS: Failed to create WebSocket:", error);
+            console.error("WS: Failed to create WebSocket instance:", error);
             updateConnectionStatus('disconnected', 'Connection Failed');
             scheduleReconnect();
             return;
         }
 
-        teacherSocket.onopen = () => {
-            updateConnectionStatus('connected', 'Connected');
-            reconnectAttempts = 0;
-            console.log('WS: Connection established.');
-            // Send teacher connect message (as defined in server.js)
-            sendMessageToServer({ type: 'teacher_connect', data: { /* Optional teacher info */ } });
-            // Server should respond with 'initial_student_list'
-        };
-
-        teacherSocket.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                handleServerMessage(message);
-            } catch (error) {
-                console.error('WS: Error processing message or invalid JSON:', event.data, error);
-            }
-        };
-
-        teacherSocket.onerror = (error) => {
-            console.error("WS: Error:", error);
-            updateConnectionStatus('disconnected', 'Error');
-            // onclose will handle reconnect scheduling
-        };
-
-        teacherSocket.onclose = (event) => {
-            const reasonText = event.reason ? ` (${event.reason})` : ` (Code: ${event.code})`;
-            console.log(`WS: Connection closed.${reasonText}`);
-            updateConnectionStatus('disconnected', `Closed${reasonText}`);
-            teacherSocket = null;
-            markAllStudentsDisconnected(); // Mark students visually disconnected
-            scheduleReconnect(); // Attempt to reconnect
-        };
+        // Assign event listeners
+        teacherSocket.onopen = handleWebSocketOpen;
+        teacherSocket.onmessage = handleWebSocketMessage;
+        teacherSocket.onerror = handleWebSocketError;
+        teacherSocket.onclose = handleWebSocketClose;
     }
-function updateSelectionUI() {
-         const selectedCount = selectedStudentIds.size;
-         selectedCountSpan.textContent = `(${selectedCount} Selected)`;
 
-         // Enable/disable bulk action buttons based on selection
-         const bulkButtons = document.querySelectorAll('.view-toolbar .actions .btn');
-         bulkButtons.forEach(btn => btn.disabled = (selectedCount === 0));
+    function handleWebSocketOpen() {
+        updateConnectionStatus('connected', 'Connected');
+        reconnectAttempts = 0;
+        console.info('WS: Connection established.');
+        // Identify as teacher to the server
+        sendMessageToServer({ type: 'teacher_connect', data: { /* Optional: teacher name, id etc. */ } });
+        // Server is expected to respond with 'initial_student_list'
+    }
 
-         // Update selectAll checkbox state (checked, indeterminate, or unchecked)
-         const totalRendered = studentGrid.querySelectorAll('.student-card').length;
-          if (totalRendered === 0) {
-               selectAllCheckbox.checked = false;
-               selectAllCheckbox.indeterminate = false;
-          } else {
-               selectAllCheckbox.checked = selectedCount === totalRendered;
-               selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalRendered;
-          }
-     }
-    
+    function handleWebSocketMessage(event) {
+        try {
+            const message = JSON.parse(event.data);
+            // Process the received message based on its type
+            handleServerMessage(message);
+        } catch (error) {
+            console.error('WS: Failed to parse message or handle command:', error, event.data);
+        }
+    }
+
+    function handleWebSocketError(error) {
+        console.error("WS: WebSocket error occurred:", error);
+        updateConnectionStatus('disconnected', 'Error');
+        // The 'close' event will likely follow, handling reconnect there.
+    }
+
+    function handleWebSocketClose(event) {
+        const reasonText = event.reason ? ` (${event.reason})` : ` (Code: ${event.code})`;
+        console.warn(`WS: Connection closed.${reasonText}`);
+        updateConnectionStatus('disconnected', `Closed${reasonText}`);
+        teacherSocket = null;
+        markAllStudentsDisconnected(); // Visually mark students as disconnected
+        scheduleReconnect(); // Attempt to reconnect automatically
+    }
+
+    /**
+     * Schedules a reconnect attempt if conditions allow.
+     */
     function scheduleReconnect() {
         if (reconnectTimeoutId || (teacherSocket && teacherSocket.readyState === WebSocket.OPEN)) {
             return; // Already scheduled or connected
@@ -152,359 +163,419 @@ function updateSelectionUI() {
 
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
-            console.log(`WS: Attempting reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY / 1000}s...`);
+            console.info(`WS: Scheduling reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY_MS / 1000}s...`);
             updateConnectionStatus('connecting', `Reconnecting (${reconnectAttempts})...`);
-            reconnectTimeoutId = setTimeout(connectWebSocket, RECONNECT_DELAY);
+            reconnectTimeoutId = setTimeout(connectWebSocket, RECONNECT_DELAY_MS);
         } else {
-            console.error("WS: Max reconnect attempts reached.");
+            console.error("WS: Maximum reconnect attempts reached. Giving up.");
             updateConnectionStatus('disconnected', 'Reconnect Failed');
         }
     }
 
-    // No requestInitialData needed, server sends 'initial_student_list' on 'teacher_connect'
-
+    /**
+     * Sends a JSON payload to the WebSocket server if connected.
+     * @param {object} payload - The JavaScript object to send.
+     */
     function sendMessageToServer(payload) {
         if (teacherSocket && teacherSocket.readyState === WebSocket.OPEN) {
             try {
-                teacherSocket.send(JSON.stringify(payload));
-                // console.log("WS Sent:", payload); // Optional: log sent messages
+                const messageString = JSON.stringify(payload);
+                teacherSocket.send(messageString);
+                // console.debug("WS Sent:", payload.type, payload); // Verbose logging
             } catch (error) {
-                console.error("WS: Error sending message:", error);
+                console.error("WS: Failed to stringify or send message:", error, payload);
             }
         } else {
-            console.warn("WS: Not open. Message not sent:", payload);
-            // Consider queuing or showing an error
+            console.warn("WS: Connection not open. Message unsent:", payload);
+            // TODO: Implement message queuing or user notification for critical messages?
         }
     }
 
+    /**
+     * Updates the connection status indicator in the UI.
+     * @param {'connected' | 'disconnected' | 'connecting'} status - The connection status.
+     * @param {string} text - The display text for the status.
+     */
     function updateConnectionStatus(status, text) {
-        if (connectionStatusDiv && connectionStatusText) {
-            connectionStatusDiv.className = `status-indicator ${status}`;
-            connectionStatusText.textContent = text;
+        if (domCache.connectionStatusDiv && domCache.connectionStatusText) {
+            domCache.connectionStatusDiv.className = `status-indicator ${status}`;
+            domCache.connectionStatusText.textContent = text;
+        } else {
+            console.warn("Connection status elements not found in DOM.");
         }
     }
 
-
-    // --- Server Message Handling (Aligned with server.js) ---
+    // --- Server Message Handling ---
+    /**
+     * Processes messages received from the WebSocket server.
+     * @param {object} message - The parsed message object.
+     * @param {string} message.type - The type of the message.
+     * @param {object} [message.data] - The payload of the message.
+     */
     function handleServerMessage(message) {
         const { type, data } = message;
-        // console.log(`WS Received: ${type}`, data); // Debug log
+        // console.debug(`WS Received: ${type}`, data); // Verbose logging
 
-        let needsUiRefresh = false; // Flag for grid/roster updates
+        let needsGridRefresh = false; // Flag to trigger a full grid re-render
+
+        // Utility to safely get student state or create if missing (e.g., for updates before initial list)
+        const getOrInitStudent = (clientId, defaultData = {}) => {
+            if (!connectedStudents.has(clientId)) {
+                 console.warn(`Received update for unknown student ${clientId}. Initializing.`);
+                 connectedStudents.set(clientId, {
+                      clientId: clientId,
+                      email: 'Loading...',
+                      status: 'connected', // Assume connected if receiving updates
+                      lastUpdate: Date.now(),
+                      ...defaultData
+                 });
+                 needsGridRefresh = true; // Need to add the card
+            }
+            return connectedStudents.get(clientId);
+        };
 
         switch (type) {
-            case 'initial_student_list': // Server sends this after teacher connects
-                console.log("Processing initial student list...");
-                connectedStudents.clear();
+            case 'initial_student_list':
+                console.info("Processing initial student list...");
+                connectedStudents.clear(); // Start fresh
                 selectedStudentIds.clear();
-                if (data && Array.isArray(data)) {
-                    data.forEach(studentData => {
-                        if (studentData?.clientId) {
-                            // Initialize student state
-                            connectedStudents.set(studentData.clientId, {
-                                clientId: studentData.clientId,
-                                email: studentData.email || 'Unknown Email',
-                                status: 'connected', // Assume initially connected if server sends them
+                if (Array.isArray(data)) {
+                    data.forEach(studentInfo => {
+                        if (studentInfo?.clientId) {
+                            connectedStudents.set(studentInfo.clientId, {
+                                clientId: studentInfo.clientId,
+                                email: studentInfo.email || 'Unknown Email',
+                                status: 'connected', // Assume connected initially
                                 lastUpdate: Date.now()
-                                // Other fields (tabs, screenshot) will come via specific updates
                             });
-                        }
+                        } else { console.warn("Ignoring invalid student entry in initial list:", studentInfo); }
                     });
                 }
-                needsUiRefresh = true;
+                needsGridRefresh = true;
                 break;
 
-            case 'student_connected': // Server sends when a new student joins
+            case 'student_connected':
                 if (data?.clientId) {
-                    console.log(`Student connected: ${data.email} (ID: ${data.clientId})`);
-                    connectedStudents.set(data.clientId, {
-                        clientId: data.clientId,
-                        email: data.email || 'Unknown Email',
-                        status: 'connected',
-                        lastUpdate: Date.now()
-                    });
-                    needsUiRefresh = true;
-                }
+                    console.info(`Student connected: ${data.email} (ID: ${data.clientId})`);
+                    const student = getOrInitStudent(data.clientId); // Use getOrInit for robustness
+                     student.email = data.email || student.email || 'Unknown Email'; // Update email if provided
+                     student.status = 'connected';
+                     student.lastUpdate = Date.now();
+                    needsGridRefresh = true; // Add/update card
+                } else { console.warn("Invalid 'student_connected' message:", data); }
                 break;
 
-            case 'student_disconnected': // Server sends when a student leaves
+            case 'student_disconnected':
                 if (data?.clientId) {
-                    console.log(`Student disconnected: ${data.clientId}`);
+                    console.info(`Student disconnected: ${data.clientId}`);
                     const student = connectedStudents.get(data.clientId);
                     if (student) {
                         student.status = 'disconnected';
-                        // Keep the student in the map but mark as disconnected visually
+                        student.lastUpdate = Date.now();
+                        // Don't remove from map, render will handle visually
                         if (selectedStudentIds.has(data.clientId)) {
                             selectedStudentIds.delete(data.clientId);
+                            // No grid refresh needed just for deselection, updateSelectionUI handles it
+                            updateSelectionUI();
                         }
-                        needsUiRefresh = true; // Update grid/roster to show disconnected status
+                         // Update the specific card directly for immediate feedback
+                         updateStudentCard(data.clientId, student);
+                         // needsGridRefresh = true; // Optional: full refresh if needed for sorting/filtering
                     }
-                }
+                     // Check if detail modal was showing this student
+                     if (domCache.studentDetailModal?.dataset.viewingClientId === data.clientId) {
+                          // Optionally update modal title or show disconnected message
+                     }
+                } else { console.warn("Invalid 'student_disconnected' message:", data); }
                 break;
 
-            // --- Handling relayed student data ---
-            // Server wraps original student message `data` inside a `payload` field,
-            // and adds the `clientId` at the top level.
+            // --- Relayed Student Data Handling ---
             case 'student_screenshot':
                 if (data?.clientId && data.payload?.imageData) {
-                    const student = connectedStudents.get(data.clientId);
-                    if (student) {
-                        student.lastScreenshotUrl = data.payload.imageData;
-                        student.lastUpdate = Date.now();
-                        student.status = 'connected'; // Receiving data implies connected
-                        updateStudentCard(data.clientId, student); // Direct UI update for screenshot
-                        updateDetailModalScreenshotIfVisible(data.clientId, data.payload.imageData);
-                    }
-                } else { console.warn("Received student_screenshot with missing data", data); }
+                    const student = getOrInitStudent(data.clientId);
+                    student.lastScreenshotUrl = data.payload.imageData;
+                    student.lastUpdate = Date.now();
+                    if (student.status !== 'locked') student.status = 'connected'; // Update status unless locked
+                    updateStudentCard(data.clientId, student);
+                    updateDetailModalScreenshotIfVisible(data.clientId, student.lastScreenshotUrl);
+                } else { console.warn("Received 'student_screenshot' with missing data:", data); }
                 break;
 
             case 'student_screenshot_error':
             case 'student_screenshot_skipped':
-                if (data?.clientId && data.payload) {
-                    const student = connectedStudents.get(data.clientId);
-                    if (student) {
-                        student.lastScreenshotUrl = null; // Clear previous screenshot
-                        student.lastUpdate = Date.now();
-                        student.status = 'connected'; // Still connected, just no screenshot
-                        const reason = data.payload.error || data.payload.reason || "Screenshot unavailable";
-                        updateStudentCard(data.clientId, student); // Update UI (will show placeholder)
-                        updateDetailModalScreenshotIfVisible(data.clientId, null, reason);
-                    }
-                } else { console.warn("Received screenshot error/skip with missing data", data); }
+                 if (data?.clientId) { // Payload might be missing or just contain reason
+                    const student = getOrInitStudent(data.clientId);
+                    const reason = data?.payload?.error || data?.payload?.reason || "Screenshot unavailable";
+                    console.warn(`Screenshot issue for ${data.clientId}: ${reason}`);
+                    student.lastScreenshotUrl = null;
+                    student.lastUpdate = Date.now();
+                     if (student.status !== 'locked') student.status = 'connected';
+                    updateStudentCard(data.clientId, student); // Show placeholder
+                    updateDetailModalScreenshotIfVisible(data.clientId, null, reason);
+                } else { console.warn(`Received '${type}' with missing clientId:`, data); }
                 break;
 
-            // Covers 'student_tabs_update', 'student_tab_created', 'student_tab_updated', 'student_tab_removed'
-            case 'student_tabs_update':
-            case 'student_tab_created':
-            case 'student_tab_updated':
-            case 'student_tab_removed':
+            case 'student_tabs_update': // Handles the full tab list
+            case 'student_tab_created': // Potentially handle single tab additions
+            case 'student_tab_updated': // Potentially handle single tab updates
+            case 'student_tab_removed': // Potentially handle single tab removals
                  if (data?.clientId && data.payload) {
-                    const student = connectedStudents.get(data.clientId);
-                    if (student) {
-                        // The payload *is* the new tabs object or the single tab data/id
-                        // For simplicity here, we just store the latest payload.
-                        // A more robust solution might merge updates for single tab changes.
-                        // For 'tabs_update', payload is the full tab object { tabId: {...}, ...}
-                        if(type === 'student_tabs_update') {
-                             student.currentTabs = data.payload;
-                        } else {
-                            // Handle single tab events if needed (e.g., update just one entry in student.currentTabs)
-                            // For now, just note the update time and update active tab if applicable
-                             // console.log(`Tab event ${type} for ${data.clientId}`, data.payload);
-                        }
+                    const student = getOrInitStudent(data.clientId);
 
-                        // Find the active tab from the latest full update
-                         student.activeTab = typeof student.currentTabs === 'object'
-                           ? Object.values(student.currentTabs).find(tab => tab && tab.active)
-                           : null;
-
-                        student.lastUpdate = Date.now();
-                        student.status = 'connected'; // Receiving data implies connected
-                        updateStudentCard(data.clientId, student); // Update card's active tab info
-                        updateDetailModalTabsIfVisible(data.clientId, student.currentTabs);
+                    // If it's the full update, replace the tabs object
+                    if (type === 'student_tabs_update') {
+                         student.currentTabs = data.payload;
+                    } else {
+                         // TODO: More granular update based on single tab event payload
+                         // This requires the payload for created/updated/removed to be defined
+                         // Example: if (type === 'student_tab_removed') delete student.currentTabs[data.payload.tabId];
+                         // For now, we'll just update based on the possibly partial payload if not 'tabs_update'
+                         // A 'request_tabs' command might be useful after single events if needed.
+                          if (typeof data.payload === 'object' && data.payload !== null) {
+                               // Crude merge/update - needs server payload definition
+                               student.currentTabs = { ...(student.currentTabs || {}), ...data.payload };
+                          }
                     }
-                } else { console.warn(`Received ${type} with missing data`, data); }
+
+                    // Update cached active tab (safer to recalculate)
+                    student.activeTab = typeof student.currentTabs === 'object'
+                        ? Object.values(student.currentTabs || {}).find(tab => tab?.active) || null
+                        : null;
+
+                    student.lastUpdate = Date.now();
+                     if (student.status !== 'locked') student.status = 'connected';
+                    updateStudentCard(data.clientId, student); // Update card UI (favicon, title)
+                    updateDetailModalTabsIfVisible(data.clientId, student.currentTabs); // Update modal if open
+                } else { console.warn(`Received '${type}' with missing data:`, data); }
                 break;
 
-            // --- Handling direct server messages/responses ---
-            case 'command_failed': // Server reports command couldn't be sent/processed
-                console.error(`Server reported command failed for ${data?.targetClientId}: ${data?.reason}`);
-                alert(`Command failed for student ${data?.targetClientId || 'Unknown'}: ${data?.reason || 'Unknown error'}`);
-                // Maybe revert optimistic UI changes if applicable
+            // --- Direct Command Handling (e.g., student client confirming lock) ---
+             // NOTE: Assumes student client sends 'status_update' AFTER lock/unlock command is processed.
+             // If not, need explicit lock/unlock messages from server or student.
+            case 'student_status_update': // Assuming student sends this on lock/unlock
+                if (data?.clientId && ['locked', 'connected'].includes(data.payload?.status)) {
+                     const student = getOrInitStudent(data.clientId);
+                     const newStatus = data.payload.status;
+                     if (student.status !== newStatus) {
+                          console.info(`Status update for ${data.clientId}: ${newStatus}`);
+                          student.status = newStatus;
+                          student.lastUpdate = Date.now();
+                          updateStudentCard(data.clientId, student); // Update card visual status (dot, overlay)
+                          // Optionally update roster if implemented
+                     }
+                } else { console.warn("Received invalid 'student_status_update':", data); }
+                 break;
+
+
+            // --- Server Responses / Errors ---
+            case 'command_failed':
+                console.error(`Server Command Failed: Target=${data?.targetClientId}, Reason=${data?.reason}`);
+                // Use a less intrusive notification than alert if possible
+                showNotification(`Command failed for student ${data?.targetClientId || '?'}: ${data?.reason || 'Unknown'}`, 'error');
+                // TODO: Revert any optimistic UI changes?
                 break;
 
-            case 'server_ack': // Optional: Server acknowledges receiving a message
-                 console.log("Server ACK:", data?.message);
-                 break;
+            case 'server_ack':
+                console.info("Server ACK:", data?.message);
+                break;
 
-             case 'pong': // Server responding to our ping
-                 // console.log("Received Pong from server");
-                 break;
+            case 'pong':
+                // console.debug("Pong received"); // Keepalive confirmation
+                break;
 
-             case 'error': // Server sending an error message (e.g., duplicate teacher)
+            case 'error': // Critical server error (e.g., duplicate teacher)
                 console.error("Server Error:", data?.message);
-                alert(`Server Error: ${data?.message}`);
+                showNotification(`Server Error: ${data?.message}`, 'error');
                 if (data?.message?.includes("Another teacher session is active")) {
-                    // Optionally disable UI or force disconnect
-                    if(teacherSocket) teacherSocket.close();
+                    // Disable UI and close connection
+                    disableDashboard("Another teacher session is active. Please close this tab.");
+                    if (teacherSocket) teacherSocket.close(1008, "Duplicate session"); // Policy Violation
                 }
                 break;
 
             default:
-                console.warn(`Received unhandled message type: ${type}`, data);
+                console.warn(`Unhandled Server Message Type: ${type}`, data);
         }
 
-        // Centralized UI refresh for grid/roster if necessary
-        if (needsUiRefresh) {
-            console.log("Needs UI Refresh: Rendering Grid/Roster...");
-            renderStudentGrid(); // Apply filter/sort and update grid
-            // updateRoster(); // Update table view if implemented
-            updateNoStudentsPlaceholder(); // Check if placeholders needed
-            updateBulkActionButtons(); // Update button states based on selection
-            updateSelectedCount(); // Update selection counter
-            // populateTargetStudentSelect(); // Update dropdown if implemented
+        // --- Trigger UI Refresh if needed ---
+        if (needsGridRefresh) {
+            console.debug("Triggering full grid refresh...");
+            renderStudentGrid();
+            // updateRoster(); // If using a roster table view
+            updateNoStudentsPlaceholder(); // Update based on potentially new student list
+            updateBulkActionButtons();
+            updateSelectedCount();
+            // populateTargetStudentSelect(); // If using a target dropdown
         }
     }
 
-    // Helper to create/update student state object (more defensive)
-    // No longer needed here, handled directly in message cases
-
+    /**
+     * Marks all students as disconnected visually, typically on WebSocket close.
+     */
     function markAllStudentsDisconnected() {
         let changed = false;
         connectedStudents.forEach(student => {
             if (student.status !== 'disconnected') {
                 student.status = 'disconnected';
+                student.lastUpdate = Date.now(); // Mark update time
                 changed = true;
-                // Don't remove from map, just update status for visual representation
             }
         });
         if (changed) {
-            console.log("Marking all students disconnected visually.");
-            renderStudentGrid(); // Re-render cards to show disconnected status
-            // updateRoster(); // Update roster if implemented
-            selectedStudentIds.clear(); // Clear selection on disconnect
-            updateSelectedCount();
-            updateBulkActionButtons();
+            console.info("Marking all students disconnected visually.");
+            renderStudentGrid(); // Re-render cards with disconnected status
+            // updateRoster();
+            selectedStudentIds.clear(); // Clear selection
+            updateSelectionUI(); // Update counts and button states
         }
     }
 
-    // --- Centralized Rendering ---
+    // --- UI Rendering & Updates ---
+
+    /**
+     * Renders the student grid, updating existing cards, adding new ones, and removing orphans.
+     */
     function renderStudentGrid() {
-        if (!studentGrid || !studentCardTemplate) return;
-
-        const fragment = document.createDocumentFragment();
-        const studentsToDisplay = getFilteredAndSortedStudents();
-
-        // --- Optimization: Update existing cards, remove orphans, add new ---
-        const existingCardIds = new Set(Array.from(studentGrid.querySelectorAll('.student-card')).map(card => card.dataset.clientId));
-        const studentsToDisplayIds = new Set(studentsToDisplay.map(s => s.clientId));
-
-        // Remove cards for students no longer in the display list (disconnected AND not filtered out)
-        existingCardIds.forEach(id => {
-             if (!studentsToDisplayIds.has(id)) {
-                  const card = studentGrid.querySelector(`.student-card[data-client-id="${id}"]`);
-                  if (card) card.remove();
-             }
-        });
-
-
-        // Update existing or add new cards
-        studentsToDisplay.forEach(student => {
-            let card = studentGrid.querySelector(`.student-card[data-client-id="${student.clientId}"]`);
-            if (!card) { // Create new card
-                card = createStudentCardElement(student.clientId, student);
-                if(card) fragment.appendChild(card); // Add to fragment for bulk insertion
-            }
-             if(card) updateStudentCard(student.clientId, student, card); // Update content regardless
-        });
-
-        // Append new cards if any
-        if(fragment.childNodes.length > 0) {
-            studentGrid.appendChild(fragment);
+        if (!domCache.studentGrid || !domCache.studentCardTemplate) {
+            console.error("Cannot render grid: Grid container or template missing.");
+            return;
         }
 
-        updateNoStudentsPlaceholder(studentsToDisplay.length);
-        updateSelectionUI(); // Ensure selection states are correct after render
-         console.log(`Grid rendered with ${studentsToDisplay.length} students.`);
+        const fragment = document.createDocumentFragment(); // For batch appending new cards
+        const studentsToDisplay = getFilteredAndSortedStudents();
+        const displayedStudentIds = new Set(studentsToDisplay.map(s => s.clientId));
+        const currentCardElements = domCache.studentGrid.querySelectorAll('.student-card');
+
+        // Remove cards for students no longer in the display list
+        currentCardElements.forEach(card => {
+            const clientId = card.dataset.clientId;
+            if (clientId && !displayedStudentIds.has(clientId)) {
+                card.remove();
+                // console.debug(`Removed orphaned card: ${clientId}`);
+            }
+        });
+
+        // Update existing cards or create and append new ones
+        studentsToDisplay.forEach(student => {
+            let card = domCache.studentGrid.querySelector(`.student-card[data-client-id="${student.clientId}"]`);
+            if (!card) { // Card doesn't exist, create it
+                card = createStudentCardElement(student.clientId); // Listener setup happens here
+                if (card) fragment.appendChild(card);
+                else console.error(`Failed to create card element for ${student.clientId}`);
+            }
+            // Update the card's content (whether new or existing)
+             if (card) updateStudentCard(student.clientId, student, card);
+        });
+
+        // Append all new cards at once
+        if (fragment.childNodes.length > 0) {
+            domCache.studentGrid.appendChild(fragment);
+        }
+
+        updateNoStudentsPlaceholder(studentsToDisplay.length); // Update based on *displayed* count
+        updateSelectionUI(); // Ensure selection counts/states are accurate
+        // console.debug(`Grid render complete. Displayed: ${studentsToDisplay.length}`);
     }
 
+    /**
+     * Filters and sorts the current list of connected students based on state variables.
+     * @returns {StudentState[]} Array of student state objects to display.
+     */
     function getFilteredAndSortedStudents() {
         let studentsArray = Array.from(connectedStudents.values());
 
         // --- Filtering ---
-        // 1. Filter by connection status (optional - maybe show disconnected grayed out?)
-        // studentsArray = studentsArray.filter(s => s.status !== 'disconnected');
-
-        // 2. Filter by search term
-        if (currentFilter) {
-            const filterLower = currentFilter.toLowerCase().trim();
-            if (filterLower) {
-                studentsArray = studentsArray.filter(student =>
-                    (student.email && student.email.toLowerCase().includes(filterLower)) ||
-                    (student.clientId && student.clientId.toLowerCase().includes(filterLower))
-                );
-            }
+        const filterLower = currentFilter.toLowerCase().trim();
+        if (filterLower) {
+            studentsArray = studentsArray.filter(student =>
+                (student.email?.toLowerCase().includes(filterLower)) ||
+                (student.clientId?.toLowerCase().includes(filterLower))
+            );
         }
+        // TODO: Add potential status filtering? (e.g., hide disconnected)
 
         // --- Sorting ---
         studentsArray.sort((a, b) => {
-            // Status Sort: connected > locked > disconnected > unknown
+            // Status Sort Order: 'connected', 'locked', 'disconnected'
             if (currentSort === 'status') {
                 const statusOrder = { connected: 1, locked: 2, disconnected: 3 };
-                const statusA = statusOrder[a.status] || 4;
+                const statusA = statusOrder[a.status] || 4; // Unknown status last
                 const statusB = statusOrder[b.status] || 4;
                 if (statusA !== statusB) return statusA - statusB;
             }
-             // Activity Sort (requires lastUpdate timestamp)
-             if (currentSort === 'activity') {
-                  const lastUpdateA = a.lastUpdate || 0;
-                  const lastUpdateB = b.lastUpdate || 0;
-                  if (lastUpdateA !== lastUpdateB) return lastUpdateB - lastUpdateA; // Descending (most recent first)
-             }
-
-            // Default/Name Sort (as fallback or primary)
-            const nameA = a.email || a.clientId;
-            const nameB = b.email || b.clientId;
-            return nameA.localeCompare(nameB);
+            // Activity Sort (most recent update first)
+            if (currentSort === 'activity') {
+                return (b.lastUpdate || 0) - (a.lastUpdate || 0);
+            }
+            // Default: Name Sort
+            return (a.email || a.clientId).localeCompare(b.email || b.clientId);
         });
 
         return studentsArray;
     }
 
-    // --- DOM Manipulation & UI Updates ---
+    /**
+     * Creates a student card element from the template and sets up basic listeners.
+     * Does NOT populate dynamic content (use updateStudentCard for that).
+     * @param {string} clientId - The student's client ID.
+     * @returns {HTMLElement | null} The created card element or null if template missing.
+     */
+    function createStudentCardElement(clientId) {
+        if (!domCache.studentCardTemplate) {
+            console.error("Student card template not found.");
+            return null;
+        }
+        try {
+            const cardClone = domCache.studentCardTemplate.content.cloneNode(true);
+            const cardElement = cardClone.querySelector('.student-card');
+            if (!cardElement) throw new Error("Template missing .student-card element");
 
-    function createStudentCardElement(clientId, studentData) {
-        if (!studentCardTemplate) return null;
-        const cardClone = studentCardTemplate.content.cloneNode(true);
-        const cardElement = cardClone.querySelector('.student-card');
-        if (!cardElement) return null;
+            cardElement.dataset.clientId = clientId; // Essential for linking actions
 
-        cardElement.dataset.clientId = clientId;
+            // --- Attach Listeners ---
+            const checkbox = cardElement.querySelector('.student-select');
+            const screenshotContainer = cardElement.querySelector('.screenshot-container');
+            const closeTabBtn = cardElement.querySelector('.close-tab-btn');
+            // const menuBtn = cardElement.querySelector('.card-menu .card-action-btn');
 
-        // Add essential event listeners immediately
-        const checkbox = cardElement.querySelector('.student-select');
-        const screenshotContainer = cardElement.querySelector('.screenshot-container');
-        const closeTabBtn = cardElement.querySelector('.close-tab-btn');
-        // const menuBtn = cardElement.querySelector('.card-menu .card-action-btn'); // For dropdown
+             if (checkbox) checkbox.addEventListener('change', handleStudentSelectChange);
+             if (screenshotContainer) screenshotContainer.addEventListener('click', () => showStudentDetail(clientId));
+             if (closeTabBtn) {
+                 closeTabBtn.addEventListener('click', (e) => {
+                     e.stopPropagation(); // Prevent card click triggering detail modal
+                     const student = connectedStudents.get(clientId);
+                     const activeTabId = student?.activeTab?.id;
+                     if (activeTabId) {
+                         showConfirmation(`Close active tab for ${student?.email || clientId}?`, () => {
+                             sendStudentCommand(clientId, 'close_tab', { tabId: activeTabId });
+                         });
+                     } else { showNotification('Could not determine the active tab for this student.', 'warn'); }
+                 });
+             }
+            // if (menuBtn) menuBtn.addEventListener('click', handleCardMenuClick);
 
-         if(checkbox) {
-             checkbox.addEventListener('change', handleStudentSelectChange);
-             checkbox.checked = selectedStudentIds.has(clientId); // Set initial state
-         }
-         if(screenshotContainer) {
-             screenshotContainer.addEventListener('click', () => showStudentDetail(clientId));
-         }
-         if(closeTabBtn) {
-             closeTabBtn.addEventListener('click', (e) => {
-                 e.stopPropagation(); // Prevent card click/modal open
-                 const student = connectedStudents.get(clientId);
-                 const activeTabId = student?.activeTab?.id;
-                 if (activeTabId && confirm(`Close active tab for ${student?.email || clientId}?`)) {
-                     // Send command to close specific tab via server
-                      sendStudentCommand(clientId, 'close_tab', { tabId: activeTabId });
-                 } else if (!activeTabId) {
-                     alert('Could not determine the active tab for this student.');
-                 }
-             });
-         }
-         // Add listener for menuBtn if implementing dropdown actions
-
-        // Initial content update happens in renderStudentGrid calling updateStudentCard
-        return cardElement;
+            return cardElement;
+        } catch (error) {
+            console.error(`Error creating student card element for ${clientId}:`, error);
+            return null;
+        }
     }
 
-    // Updates content of an existing card element
+    /**
+     * Updates the content and visual state of a specific student card.
+     * @param {string} clientId - The student's client ID.
+     * @param {StudentState} studentData - The current state data for the student.
+     * @param {HTMLElement} [cardElement] - Optional cached card element.
+     */
     function updateStudentCard(clientId, studentData, cardElement = null) {
-        const card = cardElement || studentGrid.querySelector(`.student-card[data-client-id="${clientId}"]`);
-        if (!card || !studentData) {
-             // console.warn(`Card not found for update: ${clientId}`);
-             return;
-        }
+        const card = cardElement || domCache.studentGrid?.querySelector(`.student-card[data-client-id="${clientId}"]`);
+        if (!card || !studentData) return; // Exit if card not found or data missing
 
-        // Update data attributes for styling/state
+        // Update data attribute for CSS styling based on status
         card.dataset.status = studentData.status || 'disconnected';
 
-        // Update visible elements
+        // --- Update Card Elements ---
+        // Defensive updates: check if element exists before updating
         const nameEl = card.querySelector('.student-name');
         const screenshotImg = card.querySelector('.screenshot-img');
         const noScreenshotOverlay = card.querySelector('.no-screenshot-overlay');
@@ -515,446 +586,709 @@ function updateSelectionUI() {
         const selectCheckbox = card.querySelector('.student-select');
 
         if (nameEl) nameEl.textContent = studentData.email || `ID: ${clientId.substring(0, 6)}`;
-        if (selectCheckbox) selectCheckbox.checked = selectedStudentIds.has(clientId); // Ensure checkbox reflects state
+        if (selectCheckbox) selectCheckbox.checked = selectedStudentIds.has(clientId);
 
-        // Screenshot
+        // Screenshot Area
         if (screenshotImg && noScreenshotOverlay && lastUpdatedEl) {
-            if (studentData.lastScreenshotUrl) {
-                // Avoid flickering if URL hasn't changed
-                if (screenshotImg.src !== studentData.lastScreenshotUrl) {
-                    screenshotImg.src = studentData.lastScreenshotUrl;
-                }
+            if (studentData.status === 'disconnected') {
+                 screenshotImg.style.display = 'none';
+                 if(screenshotImg.src !== PLACEHOLDER_SCREENSHOT) screenshotImg.src = PLACEHOLDER_SCREENSHOT;
+                 noScreenshotOverlay.textContent = "Disconnected";
+                 noScreenshotOverlay.classList.remove('hidden');
+                 lastUpdatedEl.textContent = ''; // Clear timestamp when disconnected
+            } else if (studentData.lastScreenshotUrl) {
+                if (screenshotImg.src !== studentData.lastScreenshotUrl) screenshotImg.src = studentData.lastScreenshotUrl;
                 screenshotImg.style.display = 'block';
                 noScreenshotOverlay.classList.add('hidden');
-            } else {
+                 lastUpdatedEl.textContent = studentData.lastUpdate ? `${new Date(studentData.lastUpdate).toLocaleTimeString()}` : '';
+            } else { // Connected but no screenshot URL
                 screenshotImg.style.display = 'none';
-                screenshotImg.src = PLACEHOLDER_SCREENSHOT; // Reset src
+                 if(screenshotImg.src !== PLACEHOLDER_SCREENSHOT) screenshotImg.src = PLACEHOLDER_SCREENSHOT;
+                noScreenshotOverlay.textContent = "No Screenshot";
                 noScreenshotOverlay.classList.remove('hidden');
+                 lastUpdatedEl.textContent = studentData.lastUpdate ? `${new Date(studentData.lastUpdate).toLocaleTimeString()}` : '';
             }
-            lastUpdatedEl.textContent = studentData.lastUpdate ? `${new Date(studentData.lastUpdate).toLocaleTimeString()}` : 'Never';
+             // Handle image load errors for screenshots
+             screenshotImg.onerror = () => {
+                  if(screenshotImg.src !== PLACEHOLDER_SCREENSHOT) { // Prevent infinite loop if placeholder fails
+                      console.warn(`Failed to load screenshot for ${clientId}: ${screenshotImg.src}`);
+                      screenshotImg.src = PLACEHOLDER_SCREENSHOT;
+                      screenshotImg.style.display = 'none';
+                      noScreenshotOverlay.textContent = "Load Error";
+                      noScreenshotOverlay.classList.remove('hidden');
+                  }
+             }
         }
 
-        // Active Tab Info
+        // Active Tab Info (Footer)
         if (faviconEl && tabTitleEl) {
-            const activeTab = studentData.activeTab || null; // Already derived in message handler
-            if (activeTab) {
-                 if(faviconEl.src !== (activeTab.favIconUrl || PLACEHOLDER_FAVICON)) {
-                      faviconEl.src = activeTab.favIconUrl || PLACEHOLDER_FAVICON;
-                 }
-                tabTitleEl.textContent = activeTab.title || 'Untitled Tab';
-                tabTitleEl.title = activeTab.url || '';
-            } else {
-                 if(faviconEl.src !== PLACEHOLDER_FAVICON) faviconEl.src = PLACEHOLDER_FAVICON;
-                tabTitleEl.textContent = studentData.status === 'disconnected' ? 'Disconnected' : 'No Active Tab';
-                tabTitleEl.title = '';
-            }
-            faviconEl.onerror = () => { if(faviconEl.src !== PLACEHOLDER_FAVICON) faviconEl.src = PLACEHOLDER_FAVICON; };
+            const activeTab = studentData.activeTab; // Already derived
+             let displayTitle = 'No Active Tab';
+             let displayUrl = '';
+             let displayFavicon = PLACEHOLDER_FAVICON;
+
+            if (studentData.status === 'disconnected') {
+                 displayTitle = 'Disconnected';
+            } else if (studentData.status === 'locked') {
+                 displayTitle = 'Screen Locked';
+             } else if (activeTab) {
+                 displayTitle = activeTab.title || 'Untitled Tab';
+                 displayUrl = activeTab.url || '';
+                 displayFavicon = activeTab.favIconUrl || PLACEHOLDER_FAVICON;
+            } // else 'No Active Tab' is default
+
+             if (faviconEl.src !== displayFavicon) faviconEl.src = displayFavicon;
+             tabTitleEl.textContent = displayTitle;
+             tabTitleEl.title = displayUrl; // Show full URL on hover
+
+            faviconEl.onerror = () => { if (faviconEl.src !== PLACEHOLDER_FAVICON) faviconEl.src = PLACEHOLDER_FAVICON; };
         }
 
         // Lock Overlay
-        if (lockOverlay) {
-            lockOverlay.classList.toggle('hidden', studentData.status !== 'locked');
+        if (lockOverlay) lockOverlay.classList.toggle('hidden', studentData.status !== 'locked');
+    }
+
+
+    /**
+     * Updates the placeholder message visibility and content.
+     * @param {number} displayedCount - The number of students currently displayed after filtering.
+     */
+    function updateNoStudentsPlaceholder(displayedCount = -1) {
+        if (!domCache.noStudentsPlaceholder || !domCache.loadingPlaceholder) return;
+
+        domCache.loadingPlaceholder.classList.add('hidden'); // Hide loading indicator
+
+        const totalStudents = connectedStudents.size;
+        const anyConnectedOrLocked = Array.from(connectedStudents.values()).some(s => s.status === 'connected' || s.status === 'locked');
+        const countToUse = displayedCount >= 0 ? displayedCount : totalStudents; // Use displayed count if available
+
+        let message = "";
+        if (totalStudents === 0) message = "No students connected yet.";
+        else if (!anyConnectedOrLocked) message = "All students are disconnected.";
+        else if (countToUse === 0 && currentFilter) message = `No students match filter "${currentFilter}".`;
+
+        if (message) {
+            domCache.noStudentsPlaceholder.textContent = message;
+            domCache.noStudentsPlaceholder.classList.remove('hidden');
+        } else {
+            domCache.noStudentsPlaceholder.classList.add('hidden');
         }
     }
 
-    function updateNoStudentsPlaceholder(studentCount = -1) {
-         // Use provided count if available, otherwise count from map
-         const count = studentCount >= 0 ? studentCount : connectedStudents.size;
-         const anyConnected = Array.from(connectedStudents.values()).some(s => s.status !== 'disconnected');
+    // --- Selection Management ---
 
-         loadingPlaceholder.classList.add('hidden'); // Always hide loading after first check
-
-         if (count === 0) {
-              // Map is truly empty
-              noStudentsPlaceholder.textContent = "No students connected.";
-              noStudentsPlaceholder.classList.remove('hidden');
-         } else if (!anyConnected) {
-              // Students exist but all are marked disconnected
-               noStudentsPlaceholder.textContent = "All students are disconnected.";
-               noStudentsPlaceholder.classList.remove('hidden');
-         } else if (studentCount === 0 && currentFilter) {
-               // No students match the current filter
-                noStudentsPlaceholder.textContent = `No students match filter "${currentFilter}".`;
-                noStudentsPlaceholder.classList.remove('hidden');
-         }
-          else {
-              // Students are present and at least one is active/matches filter
-              noStudentsPlaceholder.classList.add('hidden');
-         }
-    }
-
-
-    // (updateBulkActionButtons remains the same)
-    function updateBulkActionButtons() {
-        const hasSelection = selectedStudentIds.size > 0;
-        lockSelectedBtn.disabled = !hasSelection;
-        unlockSelectedBtn.disabled = !hasSelection;
-        openTabSelectedBtn.disabled = !hasSelection;
-        closeTabSelectedBtn.disabled = !hasSelection; // Enable only if selection exists
-        announceSelectedBtn.disabled = !hasSelection;
-        blockSiteSelectedBtn.disabled = !hasSelection;
-        focusSelectedBtn.disabled = !hasSelection;
-    }
-
-    // (updateSelectedCount remains the same)
-    function updateSelectedCount() {
-         const selectedCount = selectedStudentIds.size;
-        selectedCountSpan.textContent = `(${selectedCount} Selected)`;
-
-        // Update selectAll checkbox state
-        const renderedCards = studentGrid.querySelectorAll('.student-card');
-        const totalRendered = renderedCards.length;
-        const allRenderedSelected = totalRendered > 0 && selectedCount === totalRendered;
-
-        if (selectAllCheckbox) {
-             selectAllCheckbox.checked = allRenderedSelected;
-             selectAllCheckbox.indeterminate = selectedCount > 0 && !allRenderedSelected;
-        }
-    }
-
-    // --- Student Roster View --- (Placeholder - Implement if needed)
-    // function updateRoster() { ... }
-
-    // --- Event Listeners ---
-
-    // Sidebar Toggle
-    sidebarToggle?.addEventListener('click', () => {
-        body.classList.toggle('sidebar-collapsed');
-         // Add logic for mobile overlay if needed based on window width
-    });
-
-    // Sidebar Navigation
-    if (navList) {
-        navList.addEventListener('click', (e) => {
-            const navLink = e.target.closest('.nav-item a');
-            if (!navLink) return;
-            const navItem = navLink.closest('.nav-item');
-            const targetView = navItem?.dataset.view; // Get view ID from data-view attribute
-            if (!targetView) return;
-
-            e.preventDefault();
-            switchView(targetView);
-        });
-    }
-
-    // Filter and Sort Listeners
-    filterStudentsInput?.addEventListener('input', (e) => {
-        currentFilter = e.target.value;
-        renderStudentGrid(); // Re-render with new filter
-    });
-    sortStudentsSelect?.addEventListener('change', (e) => {
-        currentSort = e.target.value;
-        renderStudentGrid(); // Re-render with new sort order
-    });
-
-    // Selection Handling (Select All)
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', () => {
-            const isChecked = selectAllCheckbox.checked;
-            selectedStudentIds.clear(); // Clear previous
-
-            if (isChecked) {
-                 // Select all currently *displayed* students (respects filter)
-                 studentGrid.querySelectorAll('.student-card').forEach(card => {
-                     if (card.dataset.clientId) {
-                          selectedStudentIds.add(card.dataset.clientId);
-                     }
-                 });
-            }
-
-            // Update individual checkboxes and UI counts/buttons
-            studentGrid.querySelectorAll('.student-select').forEach(cb => {
-                 cb.checked = isChecked;
-            });
-            updateSelectionUI();
-        });
-    }
-
-    // Handle individual student selection (delegated listener on card creation)
+    /**
+     * Handles changes to individual student selection checkboxes.
+     * @param {Event} event - The change event object.
+     */
     function handleStudentSelectChange(event) {
         const checkbox = event.target;
         const card = checkbox.closest('.student-card');
         const clientId = card?.dataset.clientId;
-        if (!clientId) return;
-
-        if (checkbox.checked) {
-            selectedStudentIds.add(clientId);
-        } else {
-            selectedStudentIds.delete(clientId);
+        if (!clientId) {
+             console.warn("Could not identify clientId from checkbox change event.");
+             return;
         }
-        updateSelectionUI(); // Update counts, bulk buttons, selectAll state
+
+        if (checkbox.checked) selectedStudentIds.add(clientId);
+        else selectedStudentIds.delete(clientId);
+
+        updateSelectionUI(); // Update counts, button states, selectAll checkbox
     }
 
-    // --- Bulk Action Button Listeners ---
-    lockSelectedBtn?.addEventListener('click', () => sendBulkCommand('lock_screen', { message: "Screen Locked by Teacher" }));
-    unlockSelectedBtn?.addEventListener('click', () => sendBulkCommand('unlock_screen'));
-    openTabSelectedBtn?.addEventListener('click', () => showModal('open-tab-modal')); // Opens modal
-    announceSelectedBtn?.addEventListener('click', () => showModal('announce-modal')); // Opens modal
+    /**
+     * Updates the 'Select All' checkbox state and the selected count display.
+     */
+    function updateSelectionUI() {
+        const selectedCount = selectedStudentIds.size;
+        if (domCache.selectedCountSpan) domCache.selectedCountSpan.textContent = `(${selectedCount} Selected)`;
 
-    closeTabSelectedBtn?.addEventListener('click', () => {
-        if (selectedStudentIds.size > 0 && confirm(`Close the active tab for all ${selectedStudentIds.size} selected students?`)) {
-             // Note: This assumes the student client extension knows how to close its *own* active tab.
-             // The server just relays the command.
-             sendBulkCommand('close_active_tab', {}); // Command name is conceptual
-        }
-    });
-    blockSiteSelectedBtn?.addEventListener('click', () => {
-         const blocklistString = prompt(`Enter block patterns for ${selectedStudentIds.size} students (one per line):\n(e.g., *://*.coolmathgames.com/*)`);
-         if (blocklistString !== null) { // Check prompt wasn't cancelled
-             const blockedSites = blocklistString.split('\n').map(s => s.trim()).filter(s => s);
-             if(blockedSites.length > 0) {
-                 sendBulkCommand('update_blocklist', { blockedSites });
+        // Update bulk action button disabled state
+        domCache.actionButtons.forEach(btn => { btn.disabled = (selectedCount === 0); });
+
+        // Update 'Select All' checkbox state
+        if (domCache.selectAllCheckbox) {
+             const displayedCards = domCache.studentGrid.querySelectorAll('.student-card');
+             const totalDisplayed = displayedCards.length;
+             if (totalDisplayed === 0) {
+                  domCache.selectAllCheckbox.checked = false;
+                  domCache.selectAllCheckbox.indeterminate = false;
              } else {
-                 alert("No block patterns entered.");
+                  const allDisplayedSelected = selectedCount === totalDisplayed && totalDisplayed > 0;
+                  domCache.selectAllCheckbox.checked = allDisplayedSelected;
+                  domCache.selectAllCheckbox.indeterminate = selectedCount > 0 && !allDisplayedSelected;
              }
-         }
-    });
-    focusSelectedBtn?.addEventListener('click', () => {
-         const url = prompt(`Enter URL to focus ${selectedStudentIds.size} students on:`, "https://");
-         if (url && url !== "https://") {
-              if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                  alert('Please enter a valid URL (http:// or https://)');
-                  return;
-              }
-             sendBulkCommand('focus_tab', { url }); // Student client needs to handle this command
-         }
-    });
+        }
+    }
+
+    // Add listener for the 'Select All' checkbox
+    if (domCache.selectAllCheckbox) {
+        domCache.selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = domCache.selectAllCheckbox.checked;
+            selectedStudentIds.clear(); // Clear previous selection first
+
+            if (isChecked) {
+                // Select all students currently *displayed* in the grid (respects filters)
+                domCache.studentGrid.querySelectorAll('.student-card').forEach(card => {
+                    if (card.dataset.clientId) selectedStudentIds.add(card.dataset.clientId);
+                });
+            }
+
+            // Update individual checkboxes to match the 'Select All' state
+            domCache.studentGrid.querySelectorAll('.student-select').forEach(cb => { cb.checked = isChecked; });
+            updateSelectionUI(); // Update counts and buttons
+        });
+    }
 
 
-    // --- Modal Confirm Button Listeners ---
-    confirmOpenTabBtn?.addEventListener('click', () => {
-        const url = openTabUrlInput?.value?.trim();
-        if (!url) { alert("Please enter a URL."); return; }
-         if (!url.startsWith('http://') && !url.startsWith('https://')) {
-             alert('URL must start with http:// or https://'); return;
-         }
-        if (selectedStudentIds.size > 0) {
-            sendBulkCommand('open_tab', { url: url });
-            closeModal('open-tab-modal');
-        } else { alert("No students selected."); }
-    });
-    confirmAnnounceBtn?.addEventListener('click', () => {
-        const message = announceMessageInput?.value?.trim();
-         const duration = parseInt(announceDurationInput?.value || '10', 10) * 1000; // s to ms
-        if (!message) { alert("Please enter a message."); return; }
-        if (isNaN(duration) || duration < 1000) { alert("Invalid duration."); return;}
+    // --- Roster View (Placeholder) ---
+    // function updateRoster() { /* ... Implementation ... */ }
 
-        if (selectedStudentIds.size > 0) {
-            sendBulkCommand('send_announcement', { message: message, duration: duration });
-            closeModal('announce-modal');
-        } else { alert("No students selected."); }
-    });
-     // Add confirm listeners for block/focus modals if implemented
+    // --- Event Listeners Setup ---
 
-    // --- Command Sending Helpers ---
-    // Sends command for a *single* student
-    function sendStudentCommand(clientId, command, commandData = {}) {
-        console.log(`CMD -> ${clientId}: ${command}`, commandData);
-        sendMessageToServer({
-            type: 'teacher_command',
-            // Server expects payload structure like this based on server.js
-            data: {
-                targetClientId: clientId,
-                command: command,
-                data: commandData // This is the specific payload for the student client
+    /**
+     * Attaches global event listeners (sidebar, navigation, filters, modals, etc.).
+     */
+    function attachEventListeners() {
+        // Sidebar Toggle
+        domCache.sidebarToggle?.addEventListener('click', () => {
+            domCache.body.classList.toggle('sidebar-collapsed');
+            // TODO: Add specific mobile overlay logic if required
+        });
+
+        // Sidebar Navigation (using event delegation on the list)
+        domCache.navList?.addEventListener('click', (e) => {
+            const navLink = e.target.closest('.nav-item a');
+            if (!navLink) return;
+            const navItem = navLink.closest('.nav-item');
+            const targetView = navItem?.dataset.view;
+            if (targetView) {
+                e.preventDefault();
+                switchView(targetView);
             }
         });
-        // Add optimistic UI updates if needed (e.g., show 'locking...' on card)
+
+        // Filtering and Sorting
+        domCache.filterStudentsInput?.addEventListener('input', debounce(handleFilterInput, 300)); // Debounce filter input
+        domCache.sortStudentsSelect?.addEventListener('change', handleSortChange);
+
+        // Toolbar Actions (Bulk Commands)
+        document.getElementById('lock-selected')?.addEventListener('click', () => sendBulkCommand('lock_screen', { message: "Screen Locked" }));
+        document.getElementById('unlock-selected')?.addEventListener('click', () => sendBulkCommand('unlock_screen'));
+        document.getElementById('open-tab-selected')?.addEventListener('click', () => showModal('open-tab-modal'));
+        document.getElementById('announce-selected')?.addEventListener('click', () => showModal('announce-modal'));
+        document.getElementById('close-tab-selected')?.addEventListener('click', handleBulkCloseTab);
+        document.getElementById('block-site-selected')?.addEventListener('click', handleBulkBlockSite);
+        document.getElementById('focus-selected')?.addEventListener('click', handleBulkFocusTab);
+
+        // Modal Confirmations
+        domCache.confirmOpenTabBtn?.addEventListener('click', handleConfirmOpenTab);
+        domCache.confirmAnnounceBtn?.addEventListener('click', handleConfirmAnnounce);
+        // Add listeners for other modal confirmations
+
+        // Modal Closing (delegated)
+        document.addEventListener('click', handleModalCloseTriggers);
+        window.addEventListener('keydown', handleEscapeKey);
+
+         // Detail Modal Tab Close Button (delegated)
+         domCache.detailModalTabListEl?.addEventListener('click', handleDetailTabClose);
+
+    } // End attachEventListeners
+
+    // --- Event Handlers ---
+
+    function handleFilterInput(event) {
+        currentFilter = event.target.value;
+        renderStudentGrid();
     }
 
-    // Sends a command to all *currently selected* students
-    function sendBulkCommand(command, commandData = {}) {
-        const targetIds = Array.from(selectedStudentIds);
-        if (targetIds.length === 0) return;
-        console.log(`Bulk CMD -> ${targetIds.length} students: ${command}`, commandData);
-        targetIds.forEach(clientId => {
-            sendStudentCommand(clientId, command, commandData); // Send individual commands
-        });
+    function handleSortChange(event) {
+        currentSort = event.target.value;
+        renderStudentGrid();
     }
 
-    // --- Modal Helpers ---
-    function showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal?.classList.remove('hidden');
-         // Focus first input in modal if possible
-        modal?.querySelector('input, textarea')?.focus();
-    }
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal?.classList.add('hidden');
-        // Reset specific modal fields
-        switch (modalId) {
-            case 'open-tab-modal': openTabUrlInput.value = ''; break;
-            case 'announce-modal': announceMessageInput.value = ''; announceDurationInput.value = '10'; break;
-            // Add other modals
+    function handleBulkCloseTab() {
+        if (selectedStudentIds.size > 0) {
+             showConfirmation(`Close the active tab for ${selectedStudentIds.size} selected students?`, () => {
+                  // Assumes student client can identify and close its own active tab
+                  sendBulkCommand('close_active_tab', {});
+             });
         }
     }
 
-    // Setup modal close triggers (buttons and background clicks)
-    document.addEventListener('click', (event) => {
-        if (event.target.classList.contains('close-modal-btn')) {
+    function handleBulkBlockSite() {
+        if (selectedStudentIds.size === 0) return;
+        // Use a more robust modal instead of prompt in a real app
+        const blocklistString = prompt(`Enter block patterns for ${selectedStudentIds.size} students (one per line):\n(e.g., *://*.example.com/*)`);
+        if (blocklistString !== null) {
+            const blockedSites = blocklistString.split('\n').map(s => s.trim()).filter(Boolean);
+            if (blockedSites.length > 0) sendBulkCommand('update_blocklist', { blockedSites });
+            else showNotification("No block patterns entered.", "warn");
+        }
+    }
+
+    function handleBulkFocusTab() {
+        if (selectedStudentIds.size === 0) return;
+        const url = prompt(`Enter URL to focus ${selectedStudentIds.size} students on:`, "https://");
+        if (url && url !== "https://") {
+             if (!isValidUrl(url)) {
+                  showNotification('Please enter a valid URL (http:// or https://)', 'error'); return;
+             }
+            sendBulkCommand('focus_tab', { url }); // Client needs to implement 'focus_tab' command
+        }
+    }
+
+
+    function handleConfirmOpenTab() {
+        const url = domCache.openTabUrlInput?.value?.trim();
+        if (!url) { showNotification("Please enter a URL.", "warn"); return; }
+        if (!isValidUrl(url)) { showNotification('URL must start with http:// or https://', 'error'); return; }
+        if (selectedStudentIds.size === 0) { showNotification("No students selected.", "warn"); return; }
+
+        sendBulkCommand('open_tab', { url });
+        closeModal('open-tab-modal');
+    }
+
+    function handleConfirmAnnounce() {
+        const message = domCache.announceMessageInput?.value?.trim();
+        const duration = parseInt(domCache.announceDurationInput?.value || '10', 10) * 1000; // s to ms
+        if (!message) { showNotification("Please enter a message.", "warn"); return; }
+        if (isNaN(duration) || duration < 1000) { showNotification("Invalid duration (min 1 second).", "error"); return; }
+        if (selectedStudentIds.size === 0) { showNotification("No students selected.", "warn"); return; }
+
+        sendBulkCommand('send_announcement', { message, duration });
+        closeModal('announce-modal');
+    }
+
+    function handleModalCloseTriggers(event) {
+        if (event.target.matches('.close-modal-btn')) {
             const modalId = event.target.dataset.modalId;
             if (modalId) closeModal(modalId);
-        } else if (event.target.classList.contains('modal')) {
-             closeModal(event.target.id); // Close modals on background click
+        } else if (event.target.matches('.modal')) {
+             // Close if clicking on the modal backdrop (the .modal element itself)
+             closeModal(event.target.id);
         }
-    });
-     // Close modals on Escape key
-     window.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-               document.querySelectorAll('.modal:not(.hidden)').forEach(modal => closeModal(modal.id));
-          }
-     });
+    }
+
+    function handleEscapeKey(event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal:not(.hidden)').forEach(modal => closeModal(modal.id));
+        }
+    }
+
+     function handleDetailTabClose(event) {
+         const button = event.target.closest('.close-detail-tab-btn'); // Use closest for safety
+         if (!button) return; // Click wasn't on a close button or its child
+
+         const tabId = button.dataset.tabId;
+         const clientId = domCache.studentDetailModal?.dataset.viewingClientId;
+
+         if (tabId && clientId) {
+              showConfirmation("Close this tab for the student?", () => {
+                   sendStudentCommand(clientId, 'close_tab', { tabId: parseInt(tabId, 10) });
+                   // Optimistically remove from UI
+                   button.closest('li')?.remove();
+                   // TODO: Update 'other tabs' count if displayed
+              });
+         } else {
+              console.warn("Could not get tabId or clientId for closing tab in detail modal.");
+         }
+     }
+
+    // --- Command Sending ---
+
+    /**
+     * Sends a command targeting a specific student via the WebSocket server.
+     * @param {string} clientId - The target student's client ID.
+     * @param {string} command - The command name (e.g., 'lock_screen').
+     * @param {object} [commandData={}] - Optional data payload for the command.
+     */
+    function sendStudentCommand(clientId, command, commandData = {}) {
+        if (!clientId || !command) {
+             console.error("sendStudentCommand requires clientId and command."); return;
+        }
+        console.info(`CMD -> ${clientId}: ${command}`, commandData);
+        sendMessageToServer({
+            type: 'teacher_command',
+            data: { // Payload structure expected by server.js
+                targetClientId: clientId,
+                command: command,
+                data: commandData // Payload for the student client
+            }
+        });
+        // TODO: Implement optimistic UI updates (e.g., card showing 'locking...')
+    }
+
+    /**
+     * Sends a command to all currently selected students.
+     * @param {string} command - The command name.
+     * @param {object} [commandData={}] - Optional data payload for the command.
+     */
+    function sendBulkCommand(command, commandData = {}) {
+        const targetIds = Array.from(selectedStudentIds);
+        if (targetIds.length === 0) {
+             showNotification("No students selected for bulk action.", "warn");
+             return;
+        }
+        console.info(`Bulk CMD -> ${targetIds.length} students: ${command}`, commandData);
+        targetIds.forEach(clientId => {
+            sendStudentCommand(clientId, command, commandData);
+        });
+        // TODO: Implement optimistic UI updates for all selected cards
+    }
+
+    // --- Modal Management ---
+
+    /**
+     * Shows a modal dialog.
+     * @param {string} modalId - The ID of the modal element.
+     */
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+             modal.classList.remove('hidden');
+             // Attempt to focus the first focusable element within the modal
+             modal.querySelector('input, textarea, button')?.focus();
+        } else { console.error(`Modal with ID "${modalId}" not found.`); }
+    }
+
+    /**
+     * Hides a modal dialog and resets its fields.
+     * @param {string} modalId - The ID of the modal element.
+     */
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('hidden');
+        // Reset fields based on modal ID
+        switch (modalId) {
+            case 'open-tab-modal': if (domCache.openTabUrlInput) domCache.openTabUrlInput.value = ''; break;
+            case 'announce-modal':
+                 if (domCache.announceMessageInput) domCache.announceMessageInput.value = '';
+                 if (domCache.announceDurationInput) domCache.announceDurationInput.value = '10';
+                 break;
+            // Add cases for other modals
+        }
+    }
 
 
-    // --- Large Student Detail Modal ---
+    // --- Student Detail Modal Logic ---
+
+    /**
+     * Displays the detailed view modal for a specific student.
+     * @param {string} clientId - The client ID of the student to show details for.
+     */
     function showStudentDetail(clientId) {
         const student = connectedStudents.get(clientId);
-        if (!student || !studentDetailModal) return;
+        if (!student || !domCache.studentDetailModal) {
+             console.warn(`Cannot show detail: Student ${clientId} not found or modal element missing.`);
+             return;
+        }
 
-        console.log("Showing detail for:", clientId);
+        console.info(`Showing detail modal for: ${clientId}`);
 
-        // Populate static info
-        if(detailModalStudentName) detailModalStudentName.textContent = student.email || `ID: ${clientId}`;
+        // Store the currently viewed client ID on the modal itself
+        domCache.studentDetailModal.dataset.viewingClientId = clientId;
 
-        // Populate dynamic info (screenshot, tabs, activity)
+        // Populate modal content immediately with current data
+        if (domCache.detailModalStudentName) {
+            domCache.detailModalStudentName.textContent = student.email || `ID: ${clientId}`;
+        }
         updateDetailModalScreenshotIfVisible(clientId, student.lastScreenshotUrl);
         updateDetailModalTabsIfVisible(clientId, student.currentTabs);
-        // updateDetailModalActivity(clientId, student.activity); // Needs activity data structure
+        updateDetailModalActivity(clientId); // Placeholder for activity log
 
-        studentDetailModal.dataset.viewingClientId = clientId; // Store for actions
         showModal('student-detail-modal');
 
-        // Optional: Request fresh, detailed state from student
+        // Optional: Send a request for fresh/more detailed data for this specific student
         // sendStudentCommand(clientId, 'get_detailed_state', {});
     }
 
-     function updateDetailModalScreenshotIfVisible(clientId, screenshotUrl, errorMsg = null) {
-         // Only update if the modal is open AND showing the correct student
-         if (studentDetailModal.classList.contains('hidden') || studentDetailModal.dataset.viewingClientId !== clientId) {
-             return;
+    /**
+     * Updates the screenshot in the detail modal, but only if it's visible and for the correct student.
+     * @param {string} clientId - The client ID this update pertains to.
+     * @param {string | null} screenshotUrl - The new screenshot URL or null.
+     * @param {string} [errorMsg] - Optional error message if screenshot failed.
+     */
+    function updateDetailModalScreenshotIfVisible(clientId, screenshotUrl, errorMsg = null) {
+        if (!domCache.studentDetailModal || domCache.studentDetailModal.classList.contains('hidden') || domCache.studentDetailModal.dataset.viewingClientId !== clientId) {
+            return; // Modal not visible or showing a different student
+        }
+        if (domCache.detailModalScreenshot) {
+            if (screenshotUrl) {
+                 // Avoid reloading the same image unnecessarily
+                 if (domCache.detailModalScreenshot.src !== screenshotUrl) {
+                      domCache.detailModalScreenshot.src = screenshotUrl;
+                 }
+                domCache.detailModalScreenshot.alt = `Screenshot for ${student.email || clientId}`;
+                 // TODO: Hide potential error overlay
+            } else {
+                 if (domCache.detailModalScreenshot.src !== PLACEHOLDER_SCREENSHOT) {
+                      domCache.detailModalScreenshot.src = PLACEHOLDER_SCREENSHOT;
+                 }
+                domCache.detailModalScreenshot.alt = errorMsg || `Screenshot unavailable`;
+                 // TODO: Show potential error overlay
+            }
+             // Handle image load errors
+             domCache.detailModalScreenshot.onerror = () => {
+                  if (domCache.detailModalScreenshot.src !== PLACEHOLDER_SCREENSHOT) {
+                       console.warn(`Failed to load detail screenshot for ${clientId}: ${domCache.detailModalScreenshot.src}`);
+                       domCache.detailModalScreenshot.src = PLACEHOLDER_SCREENSHOT;
+                       domCache.detailModalScreenshot.alt = `Screenshot failed to load`;
+                  }
+             };
+        }
+    }
+
+    /**
+     * Updates the tab lists in the detail modal, but only if visible and for the correct student.
+     * Handles potential text overflow.
+     * @param {string} clientId - The client ID this update pertains to.
+     * @param {Object<string, TabData>} [tabsData] - The student's current tabs object.
+     */
+    function updateDetailModalTabsIfVisible(clientId, tabsData = {}) {
+        if (!domCache.studentDetailModal || domCache.studentDetailModal.classList.contains('hidden') || domCache.studentDetailModal.dataset.viewingClientId !== clientId) {
+            return; // Modal not visible or showing a different student
+        }
+
+        const tabsArray = typeof tabsData === 'object' ? Object.values(tabsData || {}) : [];
+        const activeTab = tabsArray.find(tab => tab?.active) || null;
+
+        // Update Active Tab Display
+        if (domCache.detailModalActiveTabEl) {
+            domCache.detailModalActiveTabEl.innerHTML = ''; // Clear previous
+            if (activeTab) {
+                const activeTabContent = createTabListItem(activeTab, clientId, true); // Create the element
+                domCache.detailModalActiveTabEl.appendChild(activeTabContent);
+            } else {
+                domCache.detailModalActiveTabEl.innerHTML = '<p class="text-muted">No active tab reported.</p>';
+            }
+        }
+
+        // Update Other Tabs List
+        if (domCache.detailModalTabListEl) {
+            domCache.detailModalTabListEl.innerHTML = ''; // Clear previous
+            let otherTabCount = 0;
+            tabsArray.forEach(tab => {
+                if (tab && !tab.active) {
+                    otherTabCount++;
+                     const otherTabContent = createTabListItem(tab, clientId, false); // Create the element
+                     domCache.detailModalTabListEl.appendChild(otherTabContent);
+                }
+            });
+            if (otherTabCount === 0) {
+                domCache.detailModalTabListEl.innerHTML = '<li class="text-muted">No other tabs reported.</li>';
+            }
+             // Note: Event listener for close buttons is now delegated on the parent list (detailModalTabListEl)
+        }
+    }
+
+    /**
+     * Creates an HTML element (or string) representing a tab for the detail modal list.
+     * Includes elements for favicon, title, URL (truncated), and close button.
+     * @param {TabData} tab - The tab data object.
+     * @param {string} clientId - The student's client ID (for actions).
+     * @param {boolean} isActive - Whether this is the active tab item.
+     * @returns {HTMLElement} The created list item element.
+     */
+    function createTabListItem(tab, clientId, isActive) {
+        const li = document.createElement(isActive ? 'div' : 'li'); // Use div for active, li for others
+         li.className = `tab-item ${isActive ? 'active-tab-detail' : ''}`; // Add classes for styling
+         li.dataset.tabId = tab.id;
+
+         const faviconSrc = tab.favIconUrl || PLACEHOLDER_FAVICON;
+         const titleText = tab.title || 'Untitled Tab';
+         const urlText = tab.url || 'No URL';
+
+         // Structure designed for CSS truncation (e.g., text-overflow: ellipsis)
+         // Use `title` attribute on spans to show full text on hover.
+         li.innerHTML = `
+            <img src="${faviconSrc}" class="favicon tab-favicon" alt="" onerror="this.onerror=null; this.src='${PLACEHOLDER_FAVICON}';">
+            <div class="tab-info">
+                <span class="tab-title" title="${escapeHtml(titleText)}">${escapeHtml(titleText)}</span>
+                <span class="tab-url" title="${escapeHtml(urlText)}">${escapeHtml(urlText)}</span>
+            </div>
+            <button class="btn btn-icon btn-sm btn-danger close-detail-tab-btn" data-tab-id="${tab.id}" title="Close Tab">&times;</button>
+         `;
+         return li;
+    }
+
+    /**
+     * Updates the activity log in the student detail modal. (Placeholder)
+     * @param {string} clientId - The client ID of the student.
+     */
+    function updateDetailModalActivity(clientId) {
+        if (!domCache.studentDetailModal || domCache.studentDetailModal.classList.contains('hidden') || domCache.studentDetailModal.dataset.viewingClientId !== clientId) {
+            return;
+        }
+         if (domCache.detailModalActivityLogEl) {
+              // TODO: Fetch or use stored activity data for the student
+              domCache.detailModalActivityLogEl.innerHTML = '<li>Activity log feature not implemented.</li>';
          }
-          if (detailModalScreenshot) {
-               if(screenshotUrl) {
-                    detailModalScreenshot.src = screenshotUrl;
-                    detailModalScreenshot.alt = `Screenshot for ${clientId}`;
-                    // Hide any error message overlay if implemented
-               } else {
-                    detailModalScreenshot.src = PLACEHOLDER_SCREENSHOT;
-                    detailModalScreenshot.alt = errorMsg || `Screenshot unavailable for ${clientId}`;
-                    // Show error message overlay if implemented
-               }
-          }
-     }
-
-     function updateDetailModalTabsIfVisible(clientId, tabsData) {
-         if (studentDetailModal.classList.contains('hidden') || studentDetailModal.dataset.viewingClientId !== clientId) {
-             return;
-         }
-
-         const activeTab = typeof tabsData === 'object'
-             ? Object.values(tabsData).find(tab => tab && tab.active)
-             : null;
-
-         // Update Active Tab Section
-         if (detailModalActiveTabEl) {
-             if (activeTab) {
-                  // Simple text representation - could be more structured HTML
-                  detailModalActiveTabEl.innerHTML = `
-                      <img src="${activeTab.favIconUrl || PLACEHOLDER_FAVICON}" class="favicon" alt="Favicon">
-                      <strong>${activeTab.title || 'Untitled'}</strong>
-                      <br><small>${activeTab.url || 'No URL'}</small>
-                  `;
-                  // Add close button if needed, attaching listener with tabId
-             } else {
-                  detailModalActiveTabEl.textContent = "No active tab reported.";
-             }
-         }
-
-          // Update Other Tabs List
-          if (detailModalTabListEl) {
-               detailModalTabListEl.innerHTML = ''; // Clear previous list
-               let otherTabCount = 0;
-               if (typeof tabsData === 'object') {
-                    Object.values(tabsData).forEach(tab => {
-                         if (tab && !tab.active) {
-                              otherTabCount++;
-                              const li = document.createElement('li');
-                              li.innerHTML = `
-                                   <img src="${tab.favIconUrl || PLACEHOLDER_FAVICON}" class="favicon" alt="">
-                                   <span>${tab.title || 'Untitled'}</span>
-                                   <small>(${tab.url || 'No URL'})</small>
-                                   <button class="btn btn-danger btn-sm close-detail-tab-btn" data-tab-id="${tab.id}" title="Close Tab">&times;</button>
-                              `;
-                              detailModalTabListEl.appendChild(li);
-                         }
-                    });
-               }
-               if (otherTabCount === 0) {
-                   detailModalTabListEl.innerHTML = '<li>No other tabs reported.</li>';
-               }
-                // Add event listener for the close buttons added above (use delegation on tabListEl)
-                detailModalTabListEl.querySelectorAll('.close-detail-tab-btn').forEach(btn => {
-                     btn.addEventListener('click', handleDetailTabClose);
-                });
-          }
-     }
-
-     function handleDetailTabClose(event) {
-         const button = event.target;
-         const tabId = button.dataset.tabId;
-         const clientId = studentDetailModal?.dataset.viewingClientId;
-
-         if (tabId && clientId && confirm("Close this tab for the student?")) {
-             sendStudentCommand(clientId, 'close_tab', { tabId: parseInt(tabId, 10) });
-              // Optimistically remove the list item
-             button.closest('li')?.remove();
-         }
-     }
-      // function updateDetailModalActivity(clientId, activityData) { ... }
+    }
 
 
-    // --- View Switching Logic ---
+    // --- View Management ---
+
+    /**
+     * Switches the currently visible view in the main content area.
+     * @param {string} viewId - The ID of the view to activate (e.g., 'screens', 'timeline').
+     */
     function switchView(viewId) {
-        activeViewId = viewId; // Store the current view
+        if (!viewId) return;
+        activeViewId = viewId; // Update state
 
-        // Update nav item highlight
-        document.querySelectorAll('.nav-item').forEach(item => {
+        // Update Navigation Highlight
+        domCache.navList?.querySelectorAll('.nav-item').forEach(item => {
             item.classList.toggle('active', item.dataset.view === viewId);
         });
 
-        // Update main header title
-        const activeNavItem = document.querySelector(`.nav-item[data-view="${viewId}"] span`);
-        if (currentViewTitle && activeNavItem) {
-            currentViewTitle.textContent = activeNavItem.textContent;
+        // Update Header Title
+        if (domCache.currentViewTitle) {
+            const activeNavItem = domCache.navList?.querySelector(`.nav-item[data-view="${viewId}"] span`);
+            domCache.currentViewTitle.textContent = activeNavItem?.textContent || 'Dashboard';
         }
 
-        // Show the target view, hide others
-        views.forEach(view => {
+        // Toggle View Visibility
+        domCache.views.forEach(view => {
             view.classList.toggle('active', view.id === `${viewId}-view`);
         });
 
-        console.log(`Switched view to: ${viewId}`);
-        // Add logic here if specific actions are needed when switching TO a view
-        // e.g., if (viewId === 'timeline') fetchTimelineData();
-         if (viewId === 'screens') renderStudentGrid(); // Ensure grid is rendered correctly when switching back
+        console.info(`Switched view to: ${viewId}`);
+
+        // --- Actions on View Switch ---
+        switch (viewId) {
+            case 'screens':
+                renderStudentGrid(); // Ensure grid is up-to-date when switching to it
+                break;
+            case 'timeline':
+                // TODO: Fetch/display timeline data
+                break;
+            case 'students':
+                // TODO: Fetch/display student roster data (updateRoster())
+                break;
+            case 'settings':
+                // TODO: Load settings into form fields
+                break;
+            case 'reports':
+                // TODO: Fetch/display report data
+                break;
+        }
     }
+
+    // --- Utility Functions ---
+
+    /**
+     * Basic check for http(s) URL format.
+     * @param {string} str - The string to check.
+     * @returns {boolean} True if it looks like a valid web URL.
+     */
+    function isValidUrl(str) {
+        if (!str) return false;
+        return str.startsWith('http://') || str.startsWith('https://');
+    }
+
+    /**
+     * Simple HTML escaping function.
+     * @param {string} str - String to escape.
+     * @returns {string} Escaped string.
+     */
+     function escapeHtml(str) {
+         if (!str) return '';
+         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+     }
+
+     /**
+     * Creates a debounced function that delays invoking func until after wait milliseconds.
+     * @param {Function} func - The function to debounce.
+     * @param {number} wait - The number of milliseconds to delay.
+     * @returns {Function} The new debounced function.
+     */
+     function debounce(func, wait) {
+         let timeout;
+         return function executedFunction(...args) {
+             const later = () => {
+                 clearTimeout(timeout);
+                 func.apply(this, args);
+             };
+             clearTimeout(timeout);
+             timeout = setTimeout(later, wait);
+         };
+     }
+
+    /**
+     * Shows a simple confirmation dialog before executing an action.
+     * @param {string} message - The confirmation message.
+     * @param {Function} onConfirm - Callback function to execute if confirmed.
+     */
+     function showConfirmation(message, onConfirm) {
+          if (window.confirm(message)) {
+               if (typeof onConfirm === 'function') onConfirm();
+          }
+     }
+
+     /**
+     * Displays a temporary notification message (replace with a better UI element).
+     * @param {string} message - The message to display.
+     * @param {'info' | 'warn' | 'error'} [level='info'] - The notification level.
+     */
+     function showNotification(message, level = 'info') {
+          // TODO: Implement a more user-friendly notification system (e.g., toast messages)
+          console[level === 'error' ? 'error' : (level === 'warn' ? 'warn' : 'info')](`Notification: ${message}`);
+          // Simple alert for errors, maybe remove for production
+          if (level === 'error') {
+               alert(`Error: ${message}`);
+          }
+     }
+
+     /**
+      * Disables dashboard interaction, useful for critical errors like duplicate sessions.
+      * @param {string} message - Message to display to the user.
+      */
+     function disableDashboard(message) {
+          // Simple overlay example - enhance as needed
+          let overlay = document.getElementById('dashboard-disabled-overlay');
+          if (!overlay) {
+               overlay = document.createElement('div');
+               overlay.id = 'dashboard-disabled-overlay';
+               overlay.style.position = 'fixed';
+               overlay.style.top = '0';
+               overlay.style.left = '0';
+               overlay.style.width = '100%';
+               overlay.style.height = '100%';
+               overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+               overlay.style.color = 'white';
+               overlay.style.display = 'flex';
+               overlay.style.justifyContent = 'center';
+               overlay.style.alignItems = 'center';
+               overlay.style.zIndex = '9999';
+               overlay.style.fontSize = '1.5em';
+               overlay.style.textAlign = 'center';
+               domCache.body.appendChild(overlay);
+          }
+          overlay.textContent = message;
+          console.error("Dashboard disabled:", message);
+          // Optionally disable specific buttons/inputs
+     }
+
 
     // --- Initialization ---
+    /**
+     * Initializes the dashboard UI, sets up event listeners, and connects to WebSocket.
+     */
     function initializeDashboard() {
-        console.log("Initializing dashboard...");
-        if (window.innerWidth <= 768) { // Apply collapsed sidebar on small screens initially
-            body.classList.add('sidebar-collapsed');
-        }
-        // loadSettings(); // Load any saved settings if implemented
-        switchView(activeViewId); // Set the initial view correctly
-        updateBulkActionButtons(); // Initial button states
-        updateSelectedCount();
-        updateNoStudentsPlaceholder();
-        connectWebSocket(); // Start connection attempt
+        console.info("Initializing Saber Dashboard...");
+        if (window.innerWidth <= 768) domCache.body.classList.add('sidebar-collapsed'); // Initial mobile state
+
+        attachEventListeners(); // Set up UI interactions
+        switchView(activeViewId); // Set the initial view
+        updateSelectionUI(); // Initialize button/selection states
+        updateNoStudentsPlaceholder(); // Show initial placeholder state
+        connectWebSocket(); // Start connection process
+
+        console.info("Dashboard Initialized.");
     }
 
-    // --- Start ---
+    // --- Start Application ---
     initializeDashboard();
 
 }); // End DOMContentLoaded
