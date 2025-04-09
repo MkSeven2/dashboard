@@ -1,11 +1,12 @@
-// script.js
+// Updated script.js
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Saber Teacher Dashboard Initializing...");
 
     // --- Configuration ---
-    const WS_URL = "wss://extension.mkseven1.com"; // Make sure this is correct!
+    const WS_URL = "wss://extension.mkseven1.com"; // Double-check this URL!
 
     // --- DOM Elements ---
+    // (Assuming these elements exist in your HTML based on the provided script)
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const mainContent = document.getElementById('main-content');
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = document.querySelectorAll('.view');
     const currentViewTitle = document.getElementById('current-view-title');
     const connectionStatusDiv = document.getElementById('connection-status');
-    const connectionStatusText = connectionStatusDiv.querySelector('.text');
+    const connectionStatusText = connectionStatusDiv?.querySelector('.text'); // Safety check
     const studentGrid = document.getElementById('student-grid');
     const loadingPlaceholder = document.getElementById('loading-students-placeholder');
     const noStudentsPlaceholder = document.getElementById('no-students-placeholder');
@@ -52,17 +53,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State Variables ---
     let teacherSocket = null;
-    let connectedStudents = new Map(); // clientId -> { email, userId, currentTabs, status ('connected', 'disconnected', 'locked'), lastScreenshot, lastUpdate }
+    let connectedStudents = new Map(); // clientId -> { clientId, email, userId, currentTabs, status ('connected', 'disconnected', 'locked'), lastScreenshotUrl, lastUpdate }
     let selectedStudentIds = new Set();
-    let currentSessionId = null; // Placeholder for session management
+    let currentSessionId = null; // Placeholder
     let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 10;
+    const MAX_RECONNECT_ATTEMPTS = 10; // Keep trying (or set higher/infinite?)
     const RECONNECT_DELAY = 5000; // 5 seconds
+    let reconnectTimeoutId = null; // To manage reconnection timer
 
 
     // --- WebSocket Functions ---
 
     function connectWebSocket() {
+        // Clear any pending reconnect timeout
+        if (reconnectTimeoutId) {
+            clearTimeout(reconnectTimeoutId);
+            reconnectTimeoutId = null;
+        }
+
         if (teacherSocket && (teacherSocket.readyState === WebSocket.OPEN || teacherSocket.readyState === WebSocket.CONNECTING)) {
             console.log("WebSocket already open or connecting.");
             return;
@@ -70,15 +78,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateConnectionStatus('connecting', 'Connecting...');
         console.log(`Attempting to connect to ${WS_URL}...`);
-        teacherSocket = new WebSocket(WS_URL);
+        try {
+             teacherSocket = new WebSocket(WS_URL);
+        } catch (error) {
+            console.error("Failed to create WebSocket:", error);
+            updateConnectionStatus('disconnected', 'Connection Failed');
+            scheduleReconnect(); // Try again after delay
+            return;
+        }
+
 
         teacherSocket.onopen = () => {
             updateConnectionStatus('connected', 'Connected');
-            reconnectAttempts = 0;
-            sendMessageToServer({ type: 'teacher_connect' }); // Identify as teacher
+            reconnectAttempts = 0; // Reset attempts on successful connection
             console.log('WebSocket connection established.');
-            // Request initial data if needed (e.g., active sessions, initial students)
-             requestInitialData();
+            sendMessageToServer({ type: 'teacher_connect' }); // Identify as teacher
+            requestInitialData(); // Request full state after connecting/reconnecting
         };
 
         teacherSocket.onmessage = (event) => {
@@ -94,51 +109,65 @@ document.addEventListener('DOMContentLoaded', () => {
         teacherSocket.onerror = (error) => {
             console.error("WebSocket error:", error);
             updateConnectionStatus('disconnected', 'Error');
-            // onclose will likely follow, handle cleanup there
+            // Don't schedule reconnect here, onclose will handle it
         };
 
         teacherSocket.onclose = (event) => {
             console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
-            updateConnectionStatus('disconnected', `Closed (${event.code})`);
+            const reasonText = event.reason ? ` (${event.reason})` : ` (Code: ${event.code})`;
+            updateConnectionStatus('disconnected', `Closed${reasonText}`);
             teacherSocket = null;
             markAllStudentsDisconnected(); // Update UI for all students
 
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
-                console.log(`Attempting reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY / 1000}s...`);
-                updateConnectionStatus('connecting', `Reconnecting (${reconnectAttempts})...`);
-                setTimeout(connectWebSocket, RECONNECT_DELAY);
-            } else {
-                console.error("Max WebSocket reconnect attempts reached.");
-                updateConnectionStatus('disconnected', 'Reconnect failed');
-            }
+            // Schedule reconnection attempt
+            scheduleReconnect();
         };
     }
 
-     function requestInitialData() {
-         // Ask server for list of currently connected students in relevant sessions
-         // This depends on your server implementation
-         sendMessageToServer({ type: 'request_initial_state' });
-     }
+    function scheduleReconnect() {
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            console.log(`Attempting reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY / 1000}s...`);
+            updateConnectionStatus('connecting', `Reconnecting (${reconnectAttempts})...`);
+            // Store timeout ID to prevent multiple concurrent timers
+            if (reconnectTimeoutId) clearTimeout(reconnectTimeoutId);
+            reconnectTimeoutId = setTimeout(connectWebSocket, RECONNECT_DELAY);
+        } else {
+            console.error("Max WebSocket reconnect attempts reached.");
+            updateConnectionStatus('disconnected', 'Reconnect failed');
+            // Optionally display a manual reconnect button here
+        }
+    }
+
+    // Renamed for clarity
+    function requestInitialData() {
+        // Ask server for list of currently connected students
+        // The server should respond with 'initial_student_list'
+        sendMessageToServer({ type: 'get_initial_student_list' }); // Adjusted type based on previous examples
+    }
 
 
     function sendMessageToServer(payload) {
         if (teacherSocket && teacherSocket.readyState === WebSocket.OPEN) {
             try {
                 teacherSocket.send(JSON.stringify(payload));
+                 // console.log("Sent:", payload.type); // Debug log
             } catch (error) {
                 console.error("Error sending message:", error);
             }
         } else {
             console.warn("WebSocket not open. Message not sent:", payload);
-            // Optionally show an error to the user
-            // alert("Cannot send command: Not connected to the server.");
+            // updateConnectionStatus('disconnected', 'Not Connected'); // Indicate connection issue
         }
     }
 
     function updateConnectionStatus(status, text) {
-        connectionStatusDiv.className = `status-indicator ${status}`;
-        connectionStatusText.textContent = text;
+        if (connectionStatusDiv && connectionStatusText) {
+             connectionStatusDiv.className = `status-indicator ${status}`;
+             connectionStatusText.textContent = text;
+        } else {
+            console.warn("Connection status elements not found in DOM.");
+        }
     }
 
     // --- Server Message Handling ---
@@ -147,204 +176,232 @@ document.addEventListener('DOMContentLoaded', () => {
         const { type, data } = message;
 
         switch (type) {
-            case 'initial_student_list': // Server sends list of currently connected students
+            case 'initial_student_list':
                 console.log("Received initial student list:", data);
-                loadingPlaceholder.classList.add('hidden');
-                connectedStudents.clear(); // Clear existing map
-                studentGrid.innerHTML = ''; // Clear grid before adding
-                 studentRosterBody.innerHTML = ''; // Clear roster
+                if(loadingPlaceholder) loadingPlaceholder.classList.add('hidden');
+                connectedStudents.clear();
+                if(studentGrid) studentGrid.innerHTML = '';
+                if(studentRosterBody) studentRosterBody.innerHTML = '';
                 if (data && Array.isArray(data)) {
                     data.forEach(studentData => processStudentUpdate(studentData.clientId, studentData));
                 }
                 updateBulkActionButtons();
                 updateNoStudentsPlaceholder();
-                 updateRoster(); // Update the table view as well
+                updateRoster();
                 break;
 
             case 'student_connected':
                 console.log("Student connected:", data);
-                 processStudentUpdate(data.clientId, { ...data, status: 'connected' });
-                 updateNoStudentsPlaceholder();
-                 updateRoster();
+                // Ensure data includes necessary fields (clientId, email etc.)
+                if (data && data.clientId) {
+                     processStudentUpdate(data.clientId, { ...data, status: 'connected' });
+                     updateNoStudentsPlaceholder();
+                     updateRoster();
+                } else {
+                     console.warn("Received student_connected without clientId:", data);
+                }
                 break;
 
             case 'student_disconnected':
                 console.log("Student disconnected:", data);
-                updateStudentStatus(data.clientId, 'disconnected');
-                updateRoster();
+                 if (data && data.clientId) {
+                    updateStudentStatus(data.clientId, 'disconnected');
+                    updateRoster();
+                 }
                 break;
 
-            // Message structure from server when forwarding student data:
-            // { type: 'student_update', data: { clientId: 'xyz', payload: { type: 'screenshot', data: {...} } } }
-            case 'student_update':
-                if (data && data.clientId && data.payload) {
-                    handleStudentPayload(data.clientId, data.payload);
-                }
+            // --- Direct handling of relayed student data (Adjust based on YOUR server) ---
+            case 'student_screenshot': // Assuming server sends this type directly now
+                 if (data && data.clientId && data.payload) {
+                     updateStudentScreenshot(data.clientId, data.payload.imageData);
+                     const student = connectedStudents.get(data.clientId);
+                     if(student) student.lastScreenshotUrl = data.payload.imageData;
+                 }
                 break;
+             case 'student_screenshot_error':
+             case 'student_screenshot_skipped':
+                  if (data && data.clientId && data.payload) {
+                     updateStudentScreenshot(data.clientId, null, data.payload.error || data.payload.reason);
+                  }
+                 break;
+            case 'student_tabs_update': // Assuming server sends this type directly
+                 if (data && data.clientId && data.payload) {
+                     const student = connectedStudents.get(data.clientId);
+                     if (student) {
+                         student.currentTabs = data.payload;
+                         student.lastUpdate = Date.now();
+                         updateStudentActiveTab(data.clientId, data.payload);
+                         // Optionally update a more detailed tab list view if implemented
+                     }
+                 }
+                break;
+            case 'student_status_update': // If student extension sends its own status (e.g., locked state confirmed)
+                 if (data && data.clientId && data.payload && data.payload.status) {
+                    updateStudentStatus(data.clientId, data.payload.status);
+                    updateRoster();
+                 }
+                break;
+            // --- End Direct Handling ---
 
             case 'command_failed':
-                console.error(`Command failed for student ${data.targetClientId}: ${data.reason}`);
-                alert(`Command failed for student ${data.targetClientId || 'Unknown'}: ${data.reason || 'Unknown error'}`);
+                console.error(`Command failed for student ${data?.targetClientId}: ${data?.reason}`);
+                alert(`Command failed for student ${data?.targetClientId || 'Unknown'}: ${data?.reason || 'Unknown error'}`);
                 break;
 
-             case 'session_update': // Example: Server updates session list or status
-                 console.log("Session update:", data);
-                 // Update UI related to sessions here
-                 break;
+             case 'session_update':
+                console.log("Session update:", data);
+                // Update UI related to sessions
+                break;
 
-            case 'pong': // Ignore pong if necessary
+             case 'pong':
                 // console.log('Pong received');
                 break;
 
-            case 'error': // General server error message
-                 console.error('Server Error:', message.message);
-                 alert(`Server Error: ${message.message}`);
-                 break;
+             case 'error': // General server error message
+                console.error('Server Error:', message.message);
+                alert(`Server Error: ${message.message}`);
+                break;
 
             default:
                 console.warn("Received unhandled message type:", type);
         }
     }
 
-    function handleStudentPayload(clientId, payload) {
-         const student = connectedStudents.get(clientId);
-         if (!student) return; // Ignore updates for unknown students
+    // Removed handleStudentPayload as messages are now handled directly based on type
 
-         student.lastUpdate = Date.now(); // Track activity
+    function processStudentUpdate(clientId, studentData) {
+        if (!clientId || !studentData) {
+            console.warn("processStudentUpdate called with invalid data:", clientId, studentData);
+            return;
+        }
 
-         switch (payload.type) {
-             case 'screenshot':
-                 updateStudentScreenshot(clientId, payload.data.imageData);
-                 student.lastScreenshot = payload.data.imageData;
-                 break;
-             case 'screenshot_error':
-             case 'screenshot_skipped':
-                 updateStudentScreenshot(clientId, null, payload.data.error || payload.data.reason);
-                 break;
-             case 'tabs_update':
-                student.currentTabs = payload.data;
-                updateStudentActiveTab(clientId, payload.data);
-                // Optionally update full tab list preview if implemented
-                 break;
-            // Handle incremental tab updates if server sends them
-             case 'tab_created':
-             case 'tab_updated':
-             case 'tab_removed':
-                // Request a full update for simplicity, or implement incremental logic
-                 sendCommandToStudent(clientId, 'get_tabs', {});
-                 break;
-
-             case 'status_update': // Example: Student sends its own status (e.g., locked)
-                if(payload.data.status) {
-                     updateStudentStatus(clientId, payload.data.status);
-                     updateRoster(); // Update table if status changes
-                 }
-                 break;
-
-             default:
-                 console.warn(`Unhandled student payload type: ${payload.type} for client ${clientId}`);
-         }
-    }
-
-     function processStudentUpdate(clientId, studentData) {
-        if (!studentData) return;
-
-        const existingStudent = connectedStudents.has(clientId);
+        const isNewStudent = !connectedStudents.has(clientId);
         const studentState = connectedStudents.get(clientId) || {};
 
-        // Update student map
+        // Update student map - Prioritize new data but keep old if new is missing
         const updatedState = {
-            ...studentState,
             clientId: clientId,
             email: studentData.email || studentState.email || 'Unknown Email',
             userId: studentData.userId || studentState.userId || 'Unknown ID',
-            status: studentData.status || studentState.status || 'disconnected', // Default to disconnected if not provided
+            // Ensure status is valid, default to 'connected' if joining, else keep old or 'disconnected'
+            status: ['connected', 'disconnected', 'locked'].includes(studentData.status) ? studentData.status : (studentState.status || 'connected'),
             currentTabs: studentData.currentTabs || studentState.currentTabs || {},
-            lastScreenshot: studentData.lastScreenshot || studentState.lastScreenshot || null,
+            lastScreenshotUrl: studentData.lastScreenshotUrl || studentState.lastScreenshotUrl || null, // Store URL not image data blob directly
             lastUpdate: Date.now(),
         };
         connectedStudents.set(clientId, updatedState);
 
+        // Add or Update Student Card in Grid View
+        let card = document.getElementById(`student-card-${clientId}`);
+        if (isNewStudent || !card) {
+            if(card) card.remove(); // Remove old if somehow it existed but wasn't in map
+            if(studentCardTemplate) { // Check template exists
+                 card = createStudentCard(clientId, updatedState);
+                 if (studentGrid) {
+                    studentGrid.appendChild(card);
+                 } else {
+                     console.error("studentGrid element not found!");
+                 }
+                 if(loadingPlaceholder) loadingPlaceholder.classList.add('hidden');
+            } else {
+                console.error("studentCardTemplate not found!");
+                return; // Cannot create card
+            }
 
-         // Add or Update Student Card in Grid View
-         let card = document.getElementById(`student-card-${clientId}`);
-         if (!card) {
-             card = createStudentCard(clientId, updatedState);
-             studentGrid.appendChild(card);
-             loadingPlaceholder.classList.add('hidden');
-         } else {
-             // Update existing card elements
-             updateStudentCardContent(card, updatedState);
-         }
-         updateStudentStatusOnCard(card, updatedState.status); // Ensure visual status is correct
-
-         // Update screenshot and tab info from the latest data
-        if(updatedState.lastScreenshot) {
-            updateStudentScreenshot(clientId, updatedState.lastScreenshot);
+        } else {
+            // Update existing card elements (Name primarily, status handled separately)
+            updateStudentCardContent(card, updatedState);
         }
+
+        // Ensure visual status is correct after adding/updating
+        updateStudentStatusOnCard(card, updatedState.status);
+
+        // Update screenshot and tab info from the latest data
+        if(updatedState.lastScreenshotUrl) {
+            updateStudentScreenshot(clientId, updatedState.lastScreenshotUrl);
+        }
+         // Update active tab display even if tabs data wasn't in this specific update
         if(Object.keys(updatedState.currentTabs).length > 0) {
             updateStudentActiveTab(clientId, updatedState.currentTabs);
         }
-     }
+         // Add to dropdown select
+        addStudentToSelect(clientId, updatedState.email);
+    }
 
     function markAllStudentsDisconnected() {
         connectedStudents.forEach(student => {
-             student.status = 'disconnected';
-             updateStudentStatus(student.clientId, 'disconnected');
+            student.status = 'disconnected';
+            updateStudentStatus(student.clientId, 'disconnected'); // Updates map and card
         });
          updateRoster(); // Update table view
     }
 
-
     // --- DOM Manipulation & UI Updates ---
 
     function createStudentCard(clientId, studentData) {
+        // Ensure the template exists before cloning
+        if (!studentCardTemplate) {
+            console.error("Cannot create student card: Template not found.");
+            return null; // Return null or throw an error
+        }
         const cardClone = studentCardTemplate.content.cloneNode(true);
         const cardElement = cardClone.querySelector('.student-card');
+        if (!cardElement) {
+            console.error("Cannot create student card: '.student-card' not found in template.");
+            return null;
+        }
         cardElement.id = `student-card-${clientId}`;
         cardElement.dataset.clientId = clientId;
 
         // Initial content update
         updateStudentCardContent(cardElement, studentData);
 
-        // Add event listeners for card-specific controls
+        // Add event listeners - Use event delegation later if performance is an issue
         const checkbox = cardElement.querySelector('.student-select-checkbox');
-        checkbox.addEventListener('change', () => handleStudentSelection(clientId, checkbox.checked));
+        if (checkbox) {
+            checkbox.addEventListener('change', () => handleStudentSelection(clientId, checkbox.checked));
+        }
 
-        cardElement.querySelector('.lock-btn').addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click through
+        // Attach listeners to buttons *if they exist in the template*
+        // Use optional chaining (?.) for safety
+        cardElement.querySelector('.lock-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             sendCommandToStudent(clientId, 'lock_screen', { message: 'Screen Locked by Teacher' });
         });
-        cardElement.querySelector('.unlock-btn').addEventListener('click', (e) => {
+        cardElement.querySelector('.unlock-btn')?.addEventListener('click', (e) => {
             e.stopPropagation();
             sendCommandToStudent(clientId, 'unlock_screen', {});
         });
-         cardElement.querySelector('.open-tab-btn').addEventListener('click', (e) => {
-             e.stopPropagation();
-             promptAndOpenTabForStudent(clientId);
-         });
-          cardElement.querySelector('.message-btn').addEventListener('click', (e) => {
-              e.stopPropagation();
-              promptAndAnnounceToStudent(clientId);
-          });
-           cardElement.querySelector('.close-tab-btn').addEventListener('click', (e) => {
-               e.stopPropagation();
-               const activeTabId = cardElement.dataset.activeTabId; // Need to store active tab ID on card
-               if(activeTabId) {
-                 sendCommandToStudent(clientId, 'close_tab', { tabId: parseInt(activeTabId, 10) });
-               } else {
-                   alert("Could not determine the active tab to close.");
-               }
-           });
+        cardElement.querySelector('.open-tab-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            promptAndOpenTabForStudent(clientId);
+        });
+        cardElement.querySelector('.message-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            promptAndAnnounceToStudent(clientId);
+        });
+        cardElement.querySelector('.close-tab-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const activeTabId = cardElement.dataset.activeTabId; // Relies on dataset being set
+            if (activeTabId) {
+                sendCommandToStudent(clientId, 'close_tab', { tabId: parseInt(activeTabId, 10) });
+            } else {
+                alert("Could not determine the active tab to close.");
+            }
+        });
 
         return cardElement;
     }
 
     function updateStudentCardContent(cardElement, studentData) {
-        cardElement.querySelector('.student-name').textContent = studentData.email || `Client: ${studentData.clientId.substring(0, 6)}`;
-        cardElement.querySelector('.student-name').title = `${studentData.email}\nID: ${studentData.clientId}`;
+        if (!cardElement || !studentData) return;
+        const nameEl = cardElement.querySelector('.student-name');
+        if(nameEl) {
+            nameEl.textContent = studentData.email || `Client: ${studentData.clientId?.substring(0, 6) ?? '??'}`;
+            nameEl.title = `${studentData.email}\nID: ${studentData.clientId}`;
+        }
         // Status dot is updated via updateStudentStatusOnCard
-         // Screenshot and Active Tab are updated by their respective functions
+        // Screenshot and Active Tab are updated by their respective functions
     }
 
 
@@ -353,306 +410,333 @@ document.addEventListener('DOMContentLoaded', () => {
         if (student) {
             student.status = status;
             const card = document.getElementById(`student-card-${clientId}`);
-            if(card) {
-                 updateStudentStatusOnCard(card, status);
+            if (card) {
+                updateStudentStatusOnCard(card, status);
             }
+            // Update roster if it's the current view
+             if (document.getElementById('students-view')?.classList.contains('active')) {
+                 updateRoster();
+             }
         }
-        // No need to call updateRoster here, it's called by the message handler
     }
 
     function updateStudentStatusOnCard(cardElement, status) {
-         if (!cardElement) return;
-         cardElement.dataset.status = status; // For CSS styling
-         const statusDot = cardElement.querySelector('.status-dot');
-         statusDot.className = `status-dot ${status}`; // Update class for color
-         statusDot.title = status.charAt(0).toUpperCase() + status.slice(1); // Capitalize title
+        if (!cardElement) return;
+        cardElement.dataset.status = status; // For CSS styling [data-status="connected"] etc.
+        const statusDot = cardElement.querySelector('.status-dot');
+        if (statusDot) {
+             statusDot.className = `status-dot ${status}`; // Update class for color
+             statusDot.title = status.charAt(0).toUpperCase() + status.slice(1); // Capitalize title
+        }
 
-          // Maybe add visual indication for locked state
-         const screenshotPreview = cardElement.querySelector('.screenshot-preview');
-         if (status === 'locked') {
-             screenshotPreview.style.border = '3px solid var(--warning-color)'; // Example indicator
-         } else {
-             screenshotPreview.style.border = 'none';
-         }
+        // Maybe add visual indication for locked state more prominently
+        const screenshotPreview = cardElement.querySelector('.screenshot-preview'); // Assuming this class exists
+        if(screenshotPreview) {
+            if (status === 'locked') {
+                cardElement.classList.add('locked'); // Add class to card itself
+                screenshotPreview.style.borderColor = 'var(--warning-color, red)';
+            } else {
+                cardElement.classList.remove('locked');
+                screenshotPreview.style.borderColor = 'transparent'; // Or original border
+            }
+        }
     }
 
     function updateStudentScreenshot(clientId, imageDataUrl, errorMessage = null) {
         const card = document.getElementById(`student-card-${clientId}`);
         if (!card) return;
+
+        // Check if elements exist before accessing properties
         const imgElement = card.querySelector('.screenshot-img');
         const noScreenshotDiv = card.querySelector('.no-screenshot');
         const lastUpdatedSpan = card.querySelector('.last-updated');
 
-        if (imageDataUrl) {
+        if (!imgElement || !noScreenshotDiv || !lastUpdatedSpan) {
+             console.warn(`Screenshot elements missing in card for client ${clientId}`);
+             return;
+        }
+
+         // Log the received URL for debugging 404s
+         // console.log(`Updating screenshot for ${clientId}. URL: ${imageDataUrl ? imageDataUrl.substring(0, 50) + '...' : 'null'}, Error: ${errorMessage}`);
+
+        if (imageDataUrl && typeof imageDataUrl === 'string' && imageDataUrl.startsWith('data:image')) {
+            // Only update if it looks like a valid data URL
             imgElement.src = imageDataUrl;
             imgElement.classList.remove('hidden');
             noScreenshotDiv.classList.add('hidden');
             lastUpdatedSpan.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
         } else {
+            // Handle missing/invalid data or errors
             imgElement.classList.add('hidden');
-            imgElement.src = 'placeholder-screenshot.png'; // Reset placeholder
+            // Avoid setting src to null/undefined which might cause issues or unwanted requests
+            // imgElement.src = ''; // Clear src or set to a known valid placeholder
+            imgElement.removeAttribute('src'); // Or remove src entirely
+
             noScreenshotDiv.classList.remove('hidden');
-            noScreenshotDiv.textContent = errorMessage || "No Screenshot Available";
-             lastUpdatedSpan.textContent = `Updated: Never`;
+            noScreenshotDiv.textContent = errorMessage || "Screenshot Unavailable";
+             // Consider setting a placeholder background/icon via CSS on '.no-screenshot'
+            lastUpdatedSpan.textContent = `Updated: Never`;
+
+             if(imageDataUrl && !imageDataUrl.startsWith('data:image')) {
+                 console.error(`Invalid image data URL received for ${clientId}:`, imageDataUrl);
+             }
         }
     }
 
     function updateStudentActiveTab(clientId, tabsData) {
-         const card = document.getElementById(`student-card-${clientId}`);
+        const card = document.getElementById(`student-card-${clientId}`);
         if (!card || !tabsData) return;
 
         const activeTabInfoDiv = card.querySelector('.active-tab-info');
+        if(!activeTabInfoDiv) return; // Element missing
+
         const faviconImg = activeTabInfoDiv.querySelector('.favicon');
         const tabTitleSpan = activeTabInfoDiv.querySelector('.tab-title');
+        if(!faviconImg || !tabTitleSpan) return; // Elements missing
 
         let activeTab = null;
-        if (typeof tabsData === 'object') {
-             activeTab = Object.values(tabsData).find(tab => tab && tab.active);
+        if (typeof tabsData === 'object' && tabsData !== null) {
+            activeTab = Object.values(tabsData).find(tab => tab && tab.active);
         }
 
         if (activeTab) {
-             card.dataset.activeTabId = activeTab.id; // Store for close action
-             faviconImg.src = activeTab.favIconUrl || 'placeholder-favicon.png';
-             faviconImg.onerror = () => { faviconImg.src = 'placeholder-favicon.png'; }; // Fallback
-             tabTitleSpan.textContent = activeTab.title || 'Untitled Tab';
-             tabTitleSpan.title = activeTab.url || 'No URL';
+            card.dataset.activeTabId = activeTab.id; // Store for close action
+             // Provide a default placeholder favicon path
+            const placeholderFavicon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEUlEQVR42mNkIAAYIBAAJBtnBAAAAABJRU5ErkJggg=='; // Transparent pixel
+            faviconImg.src = (activeTab.favIconUrl && activeTab.favIconUrl.startsWith('http')) ? activeTab.favIconUrl : placeholderFavicon;
+            faviconImg.onerror = () => { faviconImg.src = placeholderFavicon; }; // Fallback on error
+            tabTitleSpan.textContent = activeTab.title || 'Untitled Tab';
+            tabTitleSpan.title = activeTab.url || 'No URL';
         } else {
-             card.dataset.activeTabId = ''; // Clear stored ID
-             faviconImg.src = 'placeholder-favicon.png';
-             tabTitleSpan.textContent = 'No Active Tab';
-             tabTitleSpan.title = '';
+            card.dataset.activeTabId = ''; // Clear stored ID
+            faviconImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEUlEQVR42mNkIAAYIBAAJBtnBAAAAABJRU5ErkJggg=='; // Placeholder
+            tabTitleSpan.textContent = 'No Active Tab';
+            tabTitleSpan.title = '';
         }
     }
 
 
     function updateNoStudentsPlaceholder() {
+        if (!noStudentsPlaceholder || !loadingPlaceholder) return;
          if (connectedStudents.size === 0) {
-             noStudentsPlaceholder.classList.remove('hidden');
-             loadingPlaceholder.classList.add('hidden');
+             // Show "No Students" only if not actively loading/connecting
+             if (teacherSocket && teacherSocket.readyState === WebSocket.OPEN) {
+                 noStudentsPlaceholder.classList.remove('hidden');
+                 loadingPlaceholder.classList.add('hidden');
+             } else {
+                 // If disconnected or connecting, show loading/connecting status instead
+                 noStudentsPlaceholder.classList.add('hidden');
+                  // Loading placeholder might be shown based on connection status elsewhere
+             }
          } else {
              noStudentsPlaceholder.classList.add('hidden');
+              loadingPlaceholder.classList.add('hidden');
          }
-     }
+    }
 
     function updateBulkActionButtons() {
+        // Check if buttons exist before setting disabled property
         const hasSelection = selectedStudentIds.size > 0;
-        lockSelectedBtn.disabled = !hasSelection;
-        unlockSelectedBtn.disabled = !hasSelection;
-        openTabSelectedBtn.disabled = !hasSelection;
-        announceSelectedBtn.disabled = !hasSelection;
-        blockSiteSelectedBtn.disabled = !hasSelection;
+        if(lockSelectedBtn) lockSelectedBtn.disabled = !hasSelection;
+        if(unlockSelectedBtn) unlockSelectedBtn.disabled = !hasSelection;
+        if(openTabSelectedBtn) openTabSelectedBtn.disabled = !hasSelection;
+        if(announceSelectedBtn) announceSelectedBtn.disabled = !hasSelection;
+        if(blockSiteSelectedBtn) blockSiteSelectedBtn.disabled = !hasSelection;
     }
 
     function updateSelectedCount() {
+         if (!selectedCountSpan || !selectAllCheckbox) return;
         selectedCountSpan.textContent = `(${selectedStudentIds.size} Selected)`;
-        selectAllCheckbox.checked = connectedStudents.size > 0 && selectedStudentIds.size === connectedStudents.size;
-         selectAllCheckbox.indeterminate = selectedStudentIds.size > 0 && selectedStudentIds.size < connectedStudents.size;
+        // Handle state when no students are connected
+         const totalStudents = connectedStudents.size;
+         selectAllCheckbox.disabled = totalStudents === 0; // Disable if no students
+        selectAllCheckbox.checked = totalStudents > 0 && selectedStudentIds.size === totalStudents;
+        selectAllCheckbox.indeterminate = selectedStudentIds.size > 0 && selectedStudentIds.size < totalStudents;
     }
-
 
     // --- Student Roster View ---
     function updateRoster() {
-         if (!studentRosterBody) return; // Only update if the view exists
-         studentRosterBody.innerHTML = ''; // Clear existing rows
+        if (!studentRosterBody || !studentRosterRowTemplate) return;
+        studentRosterBody.innerHTML = ''; // Clear existing rows
 
-         if (connectedStudents.size === 0) {
-             studentRosterBody.innerHTML = '<tr><td colspan="6">No students found.</td></tr>';
-             return;
-         }
+        if (connectedStudents.size === 0) {
+            studentRosterBody.innerHTML = '<tr><td colspan="6">No students found or connected.</td></tr>';
+            return;
+        }
 
-         connectedStudents.forEach(student => {
-             const rowClone = studentRosterRowTemplate.content.cloneNode(true);
-             const rowElement = rowClone.querySelector('tr');
-             rowElement.dataset.clientId = student.clientId;
+        // Sort students maybe? Example: by email
+         const sortedStudents = Array.from(connectedStudents.values()).sort((a, b) => (a.email || '').localeCompare(b.email || ''));
 
-             rowElement.querySelector('.roster-name').textContent = student.email?.split('@')[0] || 'Unknown'; // Example name extraction
-             rowElement.querySelector('.roster-email').textContent = student.email || 'N/A';
+         sortedStudents.forEach(student => {
+            const rowClone = studentRosterRowTemplate.content.cloneNode(true);
+            const rowElement = rowClone.querySelector('tr');
+            if (!rowElement) return; // Template might be invalid
+            rowElement.dataset.clientId = student.clientId;
 
-             const statusBadge = rowElement.querySelector('.status-badge');
-             statusBadge.textContent = student.status.charAt(0).toUpperCase() + student.status.slice(1);
-             statusBadge.className = `status-badge ${student.status}`; // Set class for color
+            // Safely access properties and provide fallbacks
+            rowElement.querySelector('.roster-name').textContent = student.email?.split('@')[0] || 'Unknown';
+            rowElement.querySelector('.roster-email').textContent = student.email || 'N/A';
 
-             rowElement.querySelector('.roster-session').textContent = currentSessionId || 'N/A'; // Placeholder session
+            const statusBadge = rowElement.querySelector('.status-badge');
+            if(statusBadge) {
+                const statusText = student.status || 'disconnected';
+                statusBadge.textContent = statusText.charAt(0).toUpperCase() + statusText.slice(1);
+                statusBadge.className = `status-badge ${statusText}`;
+            }
 
-             // Add event listeners for roster actions if needed
+             rowElement.querySelector('.roster-session').textContent = currentSessionId || 'N/A'; // Placeholder
 
-             studentRosterBody.appendChild(rowElement);
-         });
+            studentRosterBody.appendChild(rowElement);
+        });
     }
-
 
     // --- Event Listeners ---
 
     // Sidebar Toggle
-    sidebarToggle.addEventListener('click', () => {
-        // Check screen width to decide between collapse/force-open
-        if (window.innerWidth <= 768) {
-             document.body.classList.toggle('sidebar-force-open'); // Toggle explicit open class for mobile
-             // Ensure standard collapsed class is removed if force-open is active
-             if(document.body.classList.contains('sidebar-force-open')) {
-                 document.body.classList.remove('sidebar-collapsed');
-             } else {
-                  document.body.classList.add('sidebar-collapsed'); // Default to collapsed on mobile if not forced open
-             }
-        } else {
-            document.body.classList.toggle('sidebar-collapsed'); // Toggle standard collapse for desktop
-             document.body.classList.remove('sidebar-force-open'); // Remove mobile override if used
-        }
-    });
-
-     // Sidebar Navigation
-     navItems.forEach(item => {
-         item.addEventListener('click', (e) => {
-             e.preventDefault();
-             const targetViewId = item.dataset.view;
-             if (!targetViewId) return;
-
-             // Update active nav item
-             navItems.forEach(i => i.classList.remove('active'));
-             item.classList.add('active');
-
-             // Update active view panel
-             views.forEach(view => {
-                 if (view.id === targetViewId) {
-                     view.classList.add('active');
-                     currentViewTitle.textContent = item.querySelector('span').textContent; // Update header title
-                 } else {
-                     view.classList.remove('active');
-                 }
-             });
-
-             // If switching to roster, ensure it's up-to-date
-              if (targetViewId === 'students-view') {
-                 updateRoster();
-             }
-             // Close mobile sidebar after navigation
-             if (window.innerWidth <= 768) {
-                  document.body.classList.remove('sidebar-force-open');
-                  document.body.classList.add('sidebar-collapsed');
-             }
-
-         });
-     });
-
-    // Selection Handling
-    selectAllCheckbox.addEventListener('change', () => {
-        const isChecked = selectAllCheckbox.checked;
-        document.querySelectorAll('.student-select-checkbox').forEach(checkbox => {
-            const card = checkbox.closest('.student-card');
-            if (card) {
-                const clientId = card.dataset.clientId;
-                 // Only change selection if it's different from target state
-                if(checkbox.checked !== isChecked) {
-                    checkbox.checked = isChecked;
-                    handleStudentSelection(clientId, isChecked);
-                }
-            }
+    if(sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            // Simplified toggle logic (adjust based on your specific CSS needs)
+            document.body.classList.toggle('sidebar-collapsed');
+            // Add more complex logic for mobile/desktop if needed here
         });
-         // Ensure state consistency after bulk change
-         if (!isChecked) {
-             selectedStudentIds.clear();
-         } else {
-             connectedStudents.forEach((_, clientId) => selectedStudentIds.add(clientId));
-         }
-         updateSelectedCount();
-         updateBulkActionButtons();
+    } else { console.warn("Sidebar toggle button not found."); }
+
+
+    // Sidebar Navigation
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetViewId = item.dataset.view;
+            if (!targetViewId) return;
+
+            navItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            views.forEach(view => {
+                view.classList.toggle('active', view.id === targetViewId);
+            });
+
+            if(currentViewTitle) {
+                currentViewTitle.textContent = item.querySelector('span')?.textContent || 'Dashboard';
+            }
+
+            if (targetViewId === 'students-view') { // Assuming 'students-view' is the ID for the roster table container
+                updateRoster();
+            }
+
+             // Optional: Close mobile sidebar after navigation
+             // if (window.innerWidth <= 768) { document.body.classList.add('sidebar-collapsed'); }
+        });
     });
 
+    // Selection Handling (Select All)
+    if (selectAllCheckbox) {
+         selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = selectAllCheckbox.checked;
+             // Update internal state first
+             if (isChecked) {
+                 connectedStudents.forEach((_, clientId) => selectedStudentIds.add(clientId));
+             } else {
+                 selectedStudentIds.clear();
+             }
+             // Update UI checkboxes based on new state
+            document.querySelectorAll('.student-select-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                // We don't need to call handleStudentSelection here as we updated the Set directly
+            });
+            updateSelectedCount();
+            updateBulkActionButtons();
+        });
+    }
 
     function handleStudentSelection(clientId, isSelected) {
+        // This function is called by individual card checkboxes
         if (isSelected) {
             selectedStudentIds.add(clientId);
         } else {
             selectedStudentIds.delete(clientId);
         }
-        updateSelectedCount();
+        updateSelectedCount(); // Updates count and selectAll checkbox state
         updateBulkActionButtons();
     }
 
-
-    // Bulk Action Buttons
-    lockSelectedBtn.addEventListener('click', () => {
-        if (confirm(`Lock screens for ${selectedStudentIds.size} selected students?`)) {
+    // --- Bulk Action Buttons ---
+    // Attach listeners only if the buttons exist
+    lockSelectedBtn?.addEventListener('click', () => {
+        if (selectedStudentIds.size > 0 && confirm(`Lock screens for ${selectedStudentIds.size} selected students?`)) {
             selectedStudentIds.forEach(clientId => {
                 sendCommandToStudent(clientId, 'lock_screen', { message: 'Screen Locked by Teacher' });
             });
         }
     });
 
-    unlockSelectedBtn.addEventListener('click', () => {
-         if (confirm(`Unlock screens for ${selectedStudentIds.size} selected students?`)) {
+    unlockSelectedBtn?.addEventListener('click', () => {
+        if (selectedStudentIds.size > 0 && confirm(`Unlock screens for ${selectedStudentIds.size} selected students?`)) {
             selectedStudentIds.forEach(clientId => {
                 sendCommandToStudent(clientId, 'unlock_screen', {});
             });
-         }
+        }
     });
 
-     openTabSelectedBtn.addEventListener('click', () => {
-         openTabUrlInput.value = 'https://';
+    openTabSelectedBtn?.addEventListener('click', () => {
+         if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+         if(openTabUrlInput) openTabUrlInput.value = 'https://';
          showModal('open-tab-modal');
-     });
+    });
 
-     announceSelectedBtn.addEventListener('click', () => {
-         announceMessageInput.value = '';
+    announceSelectedBtn?.addEventListener('click', () => {
+         if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+         if(announceMessageInput) announceMessageInput.value = '';
          showModal('announce-modal');
-     });
+    });
 
-     blockSiteSelectedBtn.addEventListener('click', () => {
-         // Maybe pre-fill with current default blocklist?
-          blockPatternsInput.value = defaultBlocklistInput.value; // Use default as starting point
-         showModal('block-site-modal');
-     });
+    blockSiteSelectedBtn?.addEventListener('click', () => {
+        if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+        if(blockPatternsInput && defaultBlocklistInput) blockPatternsInput.value = defaultBlocklistInput.value; // Use default as starting point
+        showModal('block-site-modal');
+    });
 
-    // Modal Confirm Buttons
-    confirmOpenTabBtn.addEventListener('click', () => {
-        const url = openTabUrlInput.value.trim();
-        if (url && url !== 'https://' && selectedStudentIds.size > 0) {
-             try {
-                new URL(url); // Basic URL validation
-                 selectedStudentIds.forEach(clientId => {
+    // --- Modal Confirm Buttons ---
+    // Check elements exist before adding listeners
+    confirmOpenTabBtn?.addEventListener('click', () => {
+        const url = openTabUrlInput?.value.trim();
+        if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+        if (url && url !== 'https://') {
+            try {
+                new URL(url); // Basic validation
+                selectedStudentIds.forEach(clientId => {
                     sendCommandToStudent(clientId, 'open_tab', { url: url });
                 });
-                 closeModal('open-tab-modal');
-            } catch (_) {
-                alert("Please enter a valid URL (e.g., https://example.com)");
-            }
-        } else if (selectedStudentIds.size === 0) {
-             alert("No students selected.");
-         } else {
-             alert("Please enter a URL.");
-         }
+                closeModal('open-tab-modal');
+            } catch (_) { alert("Please enter a valid URL (e.g., https://example.com)"); }
+        } else { alert("Please enter a URL."); }
     });
 
-    confirmAnnounceBtn.addEventListener('click', () => {
-        const message = announceMessageInput.value.trim();
-        const duration = parseInt(announceDurationInput.value, 10) || 5000;
-        if (message && selectedStudentIds.size > 0) {
+    confirmAnnounceBtn?.addEventListener('click', () => {
+        const message = announceMessageInput?.value.trim();
+        const duration = parseInt(announceDurationInput?.value, 10) || 5000;
+        if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+        if (message) {
             selectedStudentIds.forEach(clientId => {
                 sendCommandToStudent(clientId, 'send_announcement', { message: message, duration: duration });
             });
             closeModal('announce-modal');
-         } else if (selectedStudentIds.size === 0) {
-             alert("No students selected.");
-        } else {
-            alert("Please enter an announcement message.");
-        }
+        } else { alert("Please enter an announcement message."); }
     });
 
-    confirmBlockSiteBtn.addEventListener('click', () => {
-        const patterns = blockPatternsInput.value
-            .split('\n')
-            .map(p => p.trim())
-            .filter(p => p.length > 0);
+    confirmBlockSiteBtn?.addEventListener('click', () => {
+        const patterns = blockPatternsInput?.value
+            ?.split('\n')
+            ?.map(p => p.trim())
+            ?.filter(p => p.length > 0) || []; // Safe parsing
 
-         if (selectedStudentIds.size > 0) {
-            console.log(`Updating blocklist for ${selectedStudentIds.size} students:`, patterns);
-             selectedStudentIds.forEach(clientId => {
-                sendCommandToStudent(clientId, 'update_blocklist', { blockedSites: patterns });
-             });
-             closeModal('block-site-modal');
-         } else {
-              alert("No students selected.");
-         }
+        if (selectedStudentIds.size === 0) { alert("No students selected."); return; }
+
+        console.log(`Updating blocklist for ${selectedStudentIds.size} students:`, patterns);
+        selectedStudentIds.forEach(clientId => {
+            sendCommandToStudent(clientId, 'update_blocklist', { blockedSites: patterns });
+        });
+        closeModal('block-site-modal');
     });
 
 
@@ -670,17 +754,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Optimistic UI update for lock/unlock status
-         if (command === 'lock_screen') {
-             updateStudentStatus(targetClientId, 'locked');
-             updateRoster();
-         } else if (command === 'unlock_screen') {
-             // Assume unlock makes them 'connected' if they were previously locked
-             const student = connectedStudents.get(targetClientId);
-             if(student && student.status === 'locked') {
-                 updateStudentStatus(targetClientId, 'connected');
-                 updateRoster();
-             }
-         }
+        if (command === 'lock_screen') {
+            updateStudentStatus(targetClientId, 'locked');
+        } else if (command === 'unlock_screen') {
+            const student = connectedStudents.get(targetClientId);
+            // Only change status if currently locked
+            if(student && student.status === 'locked') {
+                updateStudentStatus(targetClientId, 'connected');
+            }
+        }
+        // Note: Roster update is handled within updateStudentStatus now
     }
 
 
@@ -689,93 +772,104 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('hidden');
-            // Focus first input if available
-             const input = modal.querySelector('input, textarea');
-             if (input) input.focus();
-        }
+            const input = modal.querySelector('input, textarea');
+            if (input) setTimeout(() => input.focus(), 50); // Allow time for transition/render
+        } else { console.warn(`Modal with ID ${modalId} not found.`); }
     }
 
     function closeModal(modalId) {
         const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('hidden');
-        }
+        if (modal) modal.classList.add('hidden');
     }
 
-    // Close modals on background click or escape key
-     document.querySelectorAll('.modal').forEach(modal => {
-         modal.addEventListener('click', (e) => {
-             if (e.target === modal) { // Click on the background itself
-                 closeModal(modal.id);
-             }
-         });
-     });
-     window.addEventListener('keydown', (e) => {
-         if (e.key === 'Escape') {
-             document.querySelectorAll('.modal:not(.hidden)').forEach(modal => closeModal(modal.id));
+    // Attach modal close listeners more robustly
+    document.addEventListener('click', (e) => {
+         // Close on background click
+         if (e.target.classList.contains('modal')) {
+             closeModal(e.target.id);
          }
-     });
-     // Add closeModal calls to close buttons inside modals if not already done via inline onclick
-      document.querySelectorAll('.modal .close-btn').forEach(btn => {
-        const modal = btn.closest('.modal');
-        if (modal && !btn.onclick) { // Avoid overriding existing inline onclick
-            btn.addEventListener('click', () => closeModal(modal.id));
+         // Close via explicit close button
+         if (e.target.classList.contains('close-btn')) {
+             const modal = e.target.closest('.modal');
+             if(modal) closeModal(modal.id);
+         }
+    });
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal:not(.hidden)').forEach(modal => closeModal(modal.id));
         }
     });
 
-    // --- Individual Student Actions (from card buttons) ---
-     function promptAndOpenTabForStudent(clientId) {
-         const url = prompt(`Enter URL to open for student ${connectedStudents.get(clientId)?.email || clientId}:`, 'https://');
-         if (url && url !== 'https://') {
-              try {
-                new URL(url); // Basic validation
-                 sendCommandToStudent(clientId, 'open_tab', { url: url });
-             } catch (_) {
-                 alert("Invalid URL format.");
-             }
-         }
+
+    // --- Individual Student Actions (Prompts) ---
+    function promptAndOpenTabForStudent(clientId) {
+        const studentInfo = connectedStudents.get(clientId);
+        const url = prompt(`Enter URL to open for student ${studentInfo?.email || clientId}:`, 'https://');
+        if (url && url !== 'https://') {
+            try { new URL(url); sendCommandToStudent(clientId, 'open_tab', { url: url }); }
+            catch (_) { alert("Invalid URL format."); }
+        }
+    }
+
+    function promptAndAnnounceToStudent(clientId) {
+        const studentInfo = connectedStudents.get(clientId);
+        const message = prompt(`Enter announcement for student ${studentInfo?.email || clientId}:`);
+        if (message) {
+            sendCommandToStudent(clientId, 'send_announcement', { message: message, duration: 7000 });
+        }
+    }
+
+
+    // --- Settings ---
+    function loadSettings() {
+        if(defaultBlocklistInput) defaultBlocklistInput.value = localStorage.getItem('saberDefaultBlocklist') || '';
+        if(defaultIntervalInput) defaultIntervalInput.value = localStorage.getItem('saberDefaultInterval') || '5000';
+    }
+    saveDefaultBlocklistBtn?.addEventListener('click', () => {
+        if(!defaultBlocklistInput) return;
+        localStorage.setItem('saberDefaultBlocklist', defaultBlocklistInput.value);
+        alert('Default blocklist saved locally.');
+    });
+    saveDefaultIntervalBtn?.addEventListener('click', () => {
+        if(!defaultIntervalInput) return;
+        const interval = parseInt(defaultIntervalInput.value, 10);
+        if(isNaN(interval) || interval < 2000) { // Minimum 2s
+            alert("Interval must be 2000ms or higher."); return;
+        }
+        localStorage.setItem('saberDefaultInterval', interval);
+        alert('Default screenshot interval saved locally.');
+        // Maybe add button to apply default interval to selected students?
+    });
+
+     // --- Add student to select dropdown ---
+     function addStudentToSelect(clientId, email) {
+         if (!targetStudentSelect || Array.from(targetStudentSelect.options).some(opt => opt.value === clientId)) return;
+         const option = document.createElement('option');
+         option.value = clientId;
+         option.textContent = `${email || 'N/A'} (${clientId.substring(0,6)}...)`;
+         targetStudentSelect.appendChild(option);
      }
 
-     function promptAndAnnounceToStudent(clientId) {
-         const message = prompt(`Enter announcement for student ${connectedStudents.get(clientId)?.email || clientId}:`);
-         if (message) {
-             sendCommandToStudent(clientId, 'send_announcement', { message: message, duration: 7000 }); // 7 sec duration
-         }
+      function removeStudentFromSelect(clientId) {
+         if (!targetStudentSelect) return;
+         const option = targetStudentSelect.querySelector(`option[value="${clientId}"]`);
+         if (option) option.remove();
      }
-
-
-     // --- Settings ---
-     // Example: Load/Save default settings using localStorage
-     function loadSettings() {
-         defaultBlocklistInput.value = localStorage.getItem('saberDefaultBlocklist') || '';
-         defaultIntervalInput.value = localStorage.getItem('saberDefaultInterval') || '5000';
-     }
-     saveDefaultBlocklistBtn.addEventListener('click', () => {
-         localStorage.setItem('saberDefaultBlocklist', defaultBlocklistInput.value);
-         alert('Default blocklist saved.');
-     });
-      saveDefaultIntervalBtn.addEventListener('click', () => {
-           const interval = parseInt(defaultIntervalInput.value, 10);
-           if(isNaN(interval) || interval < 2000) {
-               alert("Interval must be 2000ms or higher.");
-               return;
-           }
-         localStorage.setItem('saberDefaultInterval', interval);
-         alert('Default screenshot interval saved.');
-     });
 
 
     // --- Initialization ---
     function initializeDashboard() {
-         // Set initial state for mobile sidebar
-         if (window.innerWidth <= 768) {
+        console.log("Initializing dashboard UI and WebSocket...");
+        // Set initial sidebar state based on screen width
+        if (window.innerWidth <= 768 && !document.body.classList.contains('sidebar-force-open')) {
              document.body.classList.add('sidebar-collapsed');
-         }
-         loadSettings(); // Load saved settings
-         updateBulkActionButtons(); // Ensure buttons are initially disabled
-         updateSelectedCount();
-         connectWebSocket(); // Start connection
-     }
+        }
+        loadSettings();
+        updateBulkActionButtons(); // Ensure buttons are initially disabled if needed
+        updateSelectedCount();
+        updateNoStudentsPlaceholder(); // Show initial placeholder correctly
+        connectWebSocket(); // Start connection
+    }
 
     initializeDashboard();
 
