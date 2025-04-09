@@ -696,7 +696,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
 
     // Sidebar Toggle (remains the same)
-    if (sidebarToggle) { /* ... listener code from V2 ... */ }
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+             if (window.innerWidth <= 768) {
+                 // Special toggle for mobile overlay behavior
+                 body.classList.toggle('sidebar-force-open');
+                 // Ensure standard collapse class reflects state when overlay is closed
+                 if (!body.classList.contains('sidebar-force-open')) {
+                     body.classList.add('sidebar-collapsed');
+                 } else {
+                      body.classList.remove('sidebar-collapsed'); // Ensure expanded visually
+                 }
+             } else {
+                 // Standard toggle for desktop
+                 body.classList.toggle('sidebar-collapsed');
+                 body.classList.remove('sidebar-force-open'); // Clear mobile state if toggling on desktop
+             }
+         });
+         // Close mobile overlay if clicking main content
+         mainContent.addEventListener('click', () => {
+             if(body.classList.contains('sidebar-force-open')) {
+                 body.classList.remove('sidebar-force-open');
+                 body.classList.add('sidebar-collapsed');
+             }
+         });
+
+    } else { console.warn("Sidebar toggle button not found."); }
+
 
     // Sidebar Navigation (Clearer View Switching)
     if(navList) {
