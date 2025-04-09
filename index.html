@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saber Teacher Dashboard</title>
+    <title>Sabre Advanced Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -12,238 +12,187 @@
 
     <nav id="sidebar" class="sidebar">
         <div class="sidebar-header">
-            <a href="#" class="logo">Saber</a>
+            <a href="#" class="logo">SABRE <i class="fas fa-shield-alt"></i></a>
             <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Sidebar">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
         <ul class="nav-list">
-            <li class="nav-item active" data-view="screens-view">
-                <a href="#">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <span>My Classes</span>
-                </a>
+            <li class="nav-item active" data-view="screens">
+                <a href="#"><i class="fas fa-desktop"></i><span>Screens</span></a>
             </li>
-            <li class="nav-item" data-view="sessions-view">
-                <a href="#">
-                    <i class="fas fa-clock"></i>
-                    <span>Sessions</span>
-                </a>
+            <li class="nav-item" data-view="timeline">
+                <a href="#"><i class="fas fa-stream"></i><span>Timeline</span></a>
             </li>
-             <li class="nav-item" data-view="students-view">
-                <a href="#">
-                    <i class="fas fa-user-graduate"></i>
-                    <span>Students</span>
-                </a>
+            <li class="nav-item" data-view="students">
+                <a href="#"><i class="fas fa-users"></i><span>Students</span></a>
             </li>
-            <li class="nav-item" data-view="settings-view">
-                <a href="#">
-                    <i class="fas fa-cog"></i>
-                    <span>Settings</span>
-                </a>
+            <li class="nav-item" data-view="settings">
+                <a href="#"><i class="fas fa-sliders-h"></i><span>Filters & Settings</span></a>
+            </li>
+            <li class="nav-item" data-view="reports">
+                <a href="#"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
             </li>
         </ul>
         <div class="sidebar-footer">
-             <div id="connection-status" class="status-indicator disconnected">
+            <div id="connection-status" class="status-indicator disconnected">
                 <span class="dot"></span>
                 <span class="text">Disconnected</span>
             </div>
+            <div class="user-profile">
+                <i class="fas fa-user-circle"></i>
+                <span class="username">Teacher Name</span>
             </div>
+        </div>
     </nav>
 
     <main id="main-content">
         <header class="main-header">
             <div class="header-left">
-                 <h2 id="current-view-title">My Classes</h2> </div>
-            <div class="header-right">
-                <div id="session-controls">
-                    <select id="session-select" class="control-select hidden">
-                        <option value="">Select Active Session</option>
-                        </select>
-                    <span id="current-session-info" class="session-info">No Active Session</span>
-                     <button id="start-session-btn" class="btn btn-primary"><i class="fas fa-play"></i> Start Session</button>
-                     <button id="end-session-btn" class="btn btn-danger hidden"><i class="fas fa-stop"></i> End Session</button>
+                <h2 id="view-title">Screens</h2>
+                <div id="session-info">
+                    <span class="session-status">No Active Session</span>
+                    <button id="start-session-btn" class="btn btn-success btn-sm"><i class="fas fa-play"></i> Start Session</button>
+                    <button id="end-session-btn" class="btn btn-danger btn-sm hidden"><i class="fas fa-stop"></i> End Session</button>
                 </div>
-                <div class="user-menu">
-                    <i class="fas fa-user-circle fa-2x"></i>
-                    </div>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-icon" title="Notifications"><i class="fas fa-bell"></i></button>
+                <button class="btn btn-icon" title="Help"><i class="fas fa-question-circle"></i></button>
             </div>
         </header>
 
-        <div id="screens-view" class="view active">
-            <div class="view-toolbar">
-                <div class="selection-controls">
-                    <input type="checkbox" id="select-all-checkbox" class="checkbox-input" aria-label="Select all students">
-                    <label for="select-all-checkbox">Select All</label>
-                    <span id="selected-count">(0 Selected)</span>
-                </div>
-                <div class="action-buttons">
-                    <button id="lock-selected-btn" class="btn btn-secondary" title="Lock Selected Screens"><i class="fas fa-lock"></i> Lock</button>
-                    <button id="unlock-selected-btn" class="btn btn-secondary" title="Unlock Selected Screens"><i class="fas fa-unlock"></i> Unlock</button>
-                    <button id="open-tab-selected-btn" class="btn btn-secondary" title="Open Tab for Selected"><i class="fas fa-external-link-alt"></i> Open Tab</button>
-                    <button id="announce-selected-btn" class="btn btn-secondary" title="Send Announcement to Selected"><i class="fas fa-bullhorn"></i> Announce</button>
-                    <button id="block-site-selected-btn" class="btn btn-secondary" title="Update Blocklist for Selected"><i class="fas fa-ban"></i> Block Site</button>
-                 </div>
-                 <div class="view-options">
-                    <label for="sort-students">Sort by:</label>
-                    <select id="sort-students" class="control-select">
-                        <option value="name">Name</option>
-                        <option value="status">Status</option>
+        <div class="views-container">
+
+            <div id="screens-view" class="view active">
+                <div class="view-toolbar">
+                    <div class="toolbar-section">
+                        <input type="checkbox" id="select-all-students" class="checkbox-input">
+                        <label for="select-all-students">Select All</label>
+                        <span id="selected-count">(0 Selected)</span>
+                    </div>
+                    <div class="toolbar-section actions">
+                        <button id="lock-selected" class="btn btn-secondary btn-sm" title="Lock Selected"><i class="fas fa-lock"></i> Lock</button>
+                        <button id="unlock-selected" class="btn btn-secondary btn-sm" title="Unlock Selected"><i class="fas fa-unlock"></i> Unlock</button>
+                        <button id="open-tab-selected" class="btn btn-secondary btn-sm" title="Open Tab for Selected"><i class="fas fa-external-link-alt"></i> Open Tab</button>
+                        <button id="close-tab-selected" class="btn btn-secondary btn-sm" title="Close Active Tab for Selected"><i class="fas fa-times-circle"></i> Close Tab</button>
+                        <button id="announce-selected" class="btn btn-secondary btn-sm" title="Send Announcement"><i class="fas fa-bullhorn"></i> Announce</button>
+                        <button id="block-site-selected" class="btn btn-secondary btn-sm" title="Apply Blocklist"><i class="fas fa-ban"></i> Block Site</button>
+                         <button id="focus-selected" class="btn btn-secondary btn-sm" title="Focus Selected on URL"><i class="fas fa-crosshairs"></i> Focus</button>
+                    </div>
+                    <div class="toolbar-section view-options">
+                        <input type="search" id="student-search" placeholder="Search Students..." class="control-input input-sm">
+                        <select id="sort-students" class="control-select select-sm">
+                            <option value="name">Sort by Name</option>
+                            <option value="status">Sort by Status</option>
+                            <option value="activity">Sort by Activity</option>
                         </select>
-                     <label for="filter-students">Filter:</label>
-                    <input type="text" id="filter-students" placeholder="Filter by name/email..." class="control-input">
+                         <button id="layout-toggle" class="btn btn-icon btn-sm" title="Toggle Layout"><i class="fas fa-th-large"></i></button>
+                    </div>
+                </div>
+                <div id="student-grid" class="student-grid">
+                    <div class="placeholder-message" id="loading-placeholder">Loading students...</div>
+                    <div class="placeholder-message hidden" id="no-students-placeholder">No students connected.</div>
                 </div>
             </div>
-            <div id="student-grid" class="student-grid">
-                <p id="loading-students-placeholder">Loading student data...</p>
-                <p id="no-students-placeholder" class="hidden">No students connected in this session.</p>
-                </div>
-        </div>
 
-        <div id="sessions-view" class="view">
-             <h2>Manage Sessions</h2>
-             <p>Configure and manage your teaching sessions here.</p>
-             <div class="session-management">
-                 <button id="create-new-session-btn" class="btn btn-primary">Create New Session</button> <h3>Available Sessions:</h3>
-                 <ul id="session-list">
-                     <li>Loading sessions...</li> </ul>
-                 <h3>Start Ad-Hoc Session:</h3>
-                 <input type="text" id="adhoc-session-name" placeholder="Optional Session Name" class="control-input">
-                 <button id="start-adhoc-btn" class="btn btn-secondary">Start Ad-Hoc</button> </div>
-        </div>
+            <div id="timeline-view" class="view">
+                 <h2>Activity Timeline</h2>
+                 <p>View a chronological feed of student activity (Placeholder).</p>
+                 </div>
+             <div id="students-view" class="view">
+                 <h2>Manage Students</h2>
+                 <p>View student roster, groups, and details (Placeholder).</p>
+                 </div>
+            <div id="settings-view" class="view">
+                 <h2>Filters & Settings</h2>
+                 <p>Configure website filters, session settings, and advanced options (Placeholder).</p>
+                 <div class="settings-form">
+                    <label for="default-blocklist">Default Blocklist (one pattern per line):</label>
+                    <textarea id="default-blocklist" rows="5" placeholder="*://*.example.com/*"></textarea>
+                    <button class="btn btn-primary">Save Blocklist</button>
+                 </div>
+            </div>
+            <div id="reports-view" class="view">
+                 <h2>Reports</h2>
+                 <p>View session summaries and student activity reports (Placeholder).</p>
+                 </div>
 
-        <div id="students-view" class="view">
-             <h2>Student Roster</h2>
-             <p>View and manage students enrolled in your classes or sessions.</p>
-              <div class="view-toolbar">
-                 <input type="text" id="roster-filter-input" placeholder="Filter roster..." class="control-input"> </div>
-             <table id="student-roster-table" class="data-table">
-                 <thead>
-                     <tr>
-                         <th><input type="checkbox" id="roster-select-all"></th>
-                         <th>Name</th>
-                         <th>Email</th>
-                         <th>Status</th>
-                         <th>Current Session</th>
-                         <th>Actions</th>
-                     </tr>
-                 </thead>
-                 <tbody id="student-roster-body">
-                     <tr><td colspan="6">Loading student roster...</td></tr> </tbody>
-             </table>
-        </div>
-
-        <div id="settings-view" class="view">
-             <h2>Dashboard Settings</h2>
-             <div class="settings-section">
-                 <h3>Default Blocklist</h3>
-                 <p>Set default URL patterns to block during sessions. Applied when starting a new session unless overridden.</p>
-                 <textarea id="default-blocklist-input" rows="8" placeholder="*://*.youtube.com/*&#10;*://*.coolmathgames.com/*" class="control-textarea"></textarea>
-                 <button id="save-default-blocklist-btn" class="btn btn-primary">Save Default Blocklist</button> </div>
-              <div class="settings-section">
-                 <h3>Default Screenshot Interval</h3>
-                 <p>Set the default frequency (in milliseconds) for capturing student screenshots during sessions.</p>
-                 <input type="number" id="default-interval-input" value="5000" min="2000" step="100" class="control-input">
-                 <span>ms (Minimum: 2000ms)</span>
-                 <button id="save-default-interval-btn" class="btn btn-primary">Save Default Interval</button> </div>
-             </div>
-
-    </main>
-
-    <div id="open-tab-modal" class="modal hidden">
+        </div> </main> <div id="open-tab-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" data-modal-id="open-tab-modal">×</span> <h3>Open Tab for Selected Students</h3>
-            <label for="open-tab-url">URL:</label>
-            <input type="url" id="open-tab-url" placeholder="https://example.com" class="control-input" required>
-            <button id="confirm-open-tab-btn" class="btn btn-primary">Open Tab</button> </div>
+            <span class="close-modal-btn" data-modal-id="open-tab-modal">&times;</span>
+            <h3>Open Tab for Selected Students</h3>
+            <label for="open-tab-url">Enter URL:</label>
+            <input type="url" id="open-tab-url" placeholder="https://example.com" required>
+            <button id="confirm-open-tab" class="btn btn-primary">Open Tab</button>
+        </div>
     </div>
 
-    <div id="announce-modal" class="modal hidden">
+     <div id="announce-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" data-modal-id="announce-modal">×</span> <h3>Send Announcement to Selected Students</h3>
+            <span class="close-modal-btn" data-modal-id="announce-modal">&times;</span>
+            <h3>Send Announcement</h3>
             <label for="announce-message">Message:</label>
-            <textarea id="announce-message" rows="3" placeholder="Enter your announcement..." class="control-textarea" required></textarea>
-             <label for="announce-duration">Duration (ms):</label>
-             <input type="number" id="announce-duration" value="5000" min="1000" step="500" class="control-input" required>
-            <button id="confirm-announce-btn" class="btn btn-primary">Send Announcement</button> </div>
+            <textarea id="announce-message" rows="3" required></textarea>
+             <label for="announce-duration">Duration (seconds):</label>
+             <input type="number" id="announce-duration" value="10" min="1">
+            <button id="confirm-announce" class="btn btn-primary">Send</button>
+        </div>
     </div>
 
-     <div id="block-site-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-btn" data-modal-id="block-site-modal">×</span> <h3>Update Blocklist for Selected Students</h3>
-            <p>Enter patterns (one per line) to block. This will overwrite their current blocklist for this session.</p>
-            <label for="block-patterns-input">Block Patterns:</label>
-            <textarea id="block-patterns-input" rows="5" placeholder="*://*.example-game-site.com/*" class="control-textarea"></textarea>
-            <button id="confirm-block-site-btn" class="btn btn-primary">Update Blocklist</button> </div>
-    </div>
-
-    <div id="student-detail-modal" class="modal modal-large hidden">
+     <div id="student-detail-modal" class="modal modal-large hidden">
          <div class="modal-content">
-             <span class="close-btn" data-modal-id="student-detail-modal">×</span> <h3 class="student-detail-title">Student: <span id="detail-modal-student-name">Name</span></h3>
-             <div class="student-detail-container">
-                 <div class="student-screen-large-view">
-                      <img id="detail-modal-screenshot" src="placeholder-screenshot.png" alt="Student screen large view">
-                      <div class="detail-actions">
-                          <button class="btn btn-sm btn-secondary" id="detail-modal-refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                           <button class="btn btn-sm btn-secondary" id="detail-modal-lock-btn"><i class="fas fa-lock"></i> Lock</button>
-                           <button class="btn btn-sm btn-secondary" id="detail-modal-unlock-btn"><i class="fas fa-unlock"></i> Unlock</button>
-                           <button class="btn btn-sm btn-secondary" id="detail-modal-message-btn"><i class="fas fa-comment-alt"></i> Message</button>
-                      </div>
-                 </div>
-                 <div class="student-tabs-view">
-                      <h4>Active Tab</h4>
-                      <div id="detail-modal-active-tab" class="tab-item active-tab">
-                          <img src="placeholder-favicon.png" alt="favicon" class="favicon">
-                          <div class="tab-info">
-                              <span class="tab-title">Loading...</span>
-                              <span class="tab-url"></span>
-                          </div>
-                          <button class="btn btn-sm btn-danger close-tab-btn"><i class="fas fa-times"></i> Close</button> </div>
-                      <h4>Other Tabs (<span id="detail-modal-other-tabs-count">0</span>)</h4>
-                      <ul id="detail-modal-other-tabs-list" class="tab-list">
-                          <li>No other tabs found.</li>
-                      </ul>
-                 </div>
-             </div>
+              <span class="close-modal-btn" data-modal-id="student-detail-modal">&times;</span>
+              <h3 id="detail-student-name">Student Detail</h3>
+              <div class="student-detail-layout">
+                   <div class="detail-screen-view">
+                        <img id="detail-screenshot" src="placeholder.png" alt="Student Screen">
+                        <div class="detail-screen-controls">
+                             <button class="btn btn-sm btn-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
+                             <button class="btn btn-sm btn-warning"><i class="fas fa-eye"></i> Live View</button>
+                        </div>
+                   </div>
+                   <div class="detail-info-panel">
+                        <h4>Active Tab</h4>
+                        <p id="detail-active-tab">Loading...</p>
+                        <h4>Open Tabs</h4>
+                        <ul id="detail-tab-list"><li>Loading...</li></ul>
+                        <h4>Recent Activity</h4>
+                        <ul id="detail-activity-log"><li>Loading...</li></ul>
+                        <div class="detail-actions">
+                            <button class="btn btn-secondary"><i class="fas fa-lock"></i> Lock</button>
+                            <button class="btn btn-secondary"><i class="fas fa-comment-dots"></i> Message</button>
+                            <button class="btn btn-danger"><i class="fas fa-power-off"></i> Close Browser</button>
+                        </div>
+                   </div>
+              </div>
          </div>
      </div>
 
 
     <template id="student-card-template">
-        <div class="student-card" data-client-id=""> <div class="card-header">
-                 <input type="checkbox" class="student-select-checkbox checkbox-input" aria-label="Select student">
-                 <span class="status-dot disconnected" title="Disconnected"></span> <span class="student-name">Student Name/Email</span> <div class="card-menu-btn"> <i class="fas fa-ellipsis-v"></i> </div> </div>
-            <div class="screenshot-preview" data-client-id="">
-                <img src="placeholder-screenshot.png" alt="Student screen preview" class="screenshot-img"> <div class="no-screenshot hidden">No Screenshot Available</div> <span class="last-updated">Updated: Never</span> </div>
-            <div class="active-tab-info">
-                 <img src="placeholder-favicon.png" alt="favicon" class="favicon">
-                 <span class="tab-title" title="Website URL">Loading tab info...</span>
+        <div class="student-card" data-client-id="">
+            <div class="card-header">
+                <input type="checkbox" class="student-select checkbox-input">
+                <span class="status-dot"></span>
+                <span class="student-name">Student Name</span>
+                <div class="card-menu">
+                    <button class="btn btn-icon btn-sm card-action-btn" title="More actions"><i class="fas fa-ellipsis-v"></i></button>
+                     </div>
             </div>
-            <div class="card-actions">
-                <button class="action-btn lock-btn" title="Lock Screen"><i class="fas fa-lock"></i></button>
-                <button class="action-btn unlock-btn" title="Unlock Screen"><i class="fas fa-unlock"></i></button>
-                <button class="action-btn open-tab-btn" title="Open Tab"><i class="fas fa-external-link-alt"></i></button>
-                <button class="action-btn message-btn" title="Send Message"><i class="fas fa-comment-alt"></i></button>
-                <button class="action-btn close-tab-btn" title="Close Current Tab"><i class="fas fa-times-circle"></i></button>
+            <div class="screenshot-container" title="Click to view details">
+                <img src="placeholder.png" alt="Screenshot" class="screenshot-img">
+                <div class="no-screenshot-overlay hidden">No Screenshot</div>
+                <div class="last-updated">Never</div>
+                 <div class="card-lock-overlay hidden"><i class="fas fa-lock"></i> Locked</div>
             </div>
-             </div>
+            <div class="card-footer">
+                <img src="favicon.png" alt="favicon" class="favicon">
+                <span class="tab-title" title="Tab URL">No active tab</span>
+                <button class="btn btn-icon btn-sm card-action-btn close-tab-btn" title="Close Active Tab"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
     </template>
-
-     <template id="student-roster-row-template">
-        <tr data-client-id=""> <td><input type="checkbox" class="roster-select-checkbox"></td>
-            <td class="roster-name">Student Name</td> <td class="roster-email">student@email.com</td> <td class="roster-status"><span class="status-badge offline">Offline</span></td> <td class="roster-session">None</td> <td class="roster-actions">
-                 <button class="btn btn-sm btn-secondary view-details-btn" title="View Details"><i class="fas fa-eye"></i></button>
-                 <button class="btn btn-sm btn-secondary message-roster-btn" title="Message"><i class="fas fa-comment-alt"></i></button>
-                 </td>
-        </tr>
-    </template>
-
-    <template id="detail-modal-tab-item-template">
-         <li class="tab-item" data-tab-id=""> <img src="placeholder-favicon.png" alt="favicon" class="favicon"> <div class="tab-info">
-                  <span class="tab-title">Tab Title</span> <span class="tab-url">http://tab.url</span> </div>
-              <button class="btn btn-sm btn-danger close-tab-btn"><i class="fas fa-times"></i> Close</button> </li>
-      </template>
-
 
     <script src="script.js"></script>
 </body>
