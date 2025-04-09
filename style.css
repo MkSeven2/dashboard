@@ -1,0 +1,346 @@
+/* style.css */
+
+/* --- AI Instructions: CSS Variables ---
+ * Use these variables for consistent theming.
+ * Modify them to change the overall look and feel.
+ * Add new variables as needed for components.
+ * Example: --font-family-sans: Arial, sans-serif;
+ * Example: --border-radius-medium: 8px;
+ */
+:root {
+    --color-primary: #007bff;
+    --color-primary-dark: #0056b3;
+    --color-secondary: #6c757d;
+    --color-secondary-dark: #5a6268;
+    --color-success: #28a745;
+    --color-success-dark: #218838;
+    --color-danger: #dc3545;
+    --color-danger-dark: #c82333;
+    --color-warning: #ffc107;
+    --color-info: #17a2b8;
+    --color-light: #f8f9fa;
+    --color-dark: #343a40;
+    --color-muted: #6c757d;
+    --color-bg: #f4f4f8;
+    --color-bg-panel: #e9ecef;
+    --color-bg-card: #ffffff;
+    --color-border: #ced4da;
+    --color-text: #212529;
+    --color-text-light: #ffffff;
+    --color-text-muted: #6c757d;
+
+    --font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-size-base: 1rem; /* Typically 16px */
+    --line-height-base: 1.5;
+    --spacing-unit: 0.5rem; /* 8px if base is 16px */
+
+    --border-radius: 4px;
+    --box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Base Styles & Reset --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden; /* Prevent body scroll */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-unit);
+    font-weight: 500;
+}
+
+p { margin-top: 0; margin-bottom: calc(var(--spacing-unit) * 2); }
+ul { list-style: none; padding: 0; margin: 0; }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-dark); text-decoration: underline; }
+img { max-width: 100%; height: auto; display: block; }
+
+/* --- Layout: Header --- */
+.dashboard-header {
+    background-color: var(--color-dark);
+    color: var(--color-text-light);
+    padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* Prevent header from shrinking */
+}
+.dashboard-header h1 { font-size: 1.5rem; margin-bottom: 0; }
+
+/* --- Layout: Main Content Area --- */
+.dashboard-main {
+    display: flex;
+    flex: 1; /* Grow to fill remaining vertical space */
+    overflow: hidden; /* Contains children scrolling */
+}
+
+/* --- Layout: Controls Panel --- */
+.controls-panel {
+    width: 300px; /* Slightly wider */
+    padding: calc(var(--spacing-unit) * 3);
+    background-color: var(--color-bg-panel);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto; /* Allow scrolling if content overflows */
+    flex-shrink: 0; /* Prevent panel from shrinking */
+}
+.controls-panel h3 {
+    margin-bottom: calc(var(--spacing-unit) * 3);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-unit);
+}
+
+.control-group {
+    margin-bottom: calc(var(--spacing-unit) * 3);
+}
+.control-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: var(--spacing-unit);
+}
+.control-group input[type="text"],
+.control-group input[type="search"],
+.control-group input[type="number"],
+.control-group textarea,
+.control-group select {
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 1.5);
+    margin-top: calc(var(--spacing-unit) * 0.5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+}
+.control-group textarea {
+    resize: vertical; /* Allow vertical resize */
+    min-height: 80px;
+}
+.control-group button {
+    margin-top: var(--spacing-unit);
+    width: 100%;
+}
+.bulk-actions h4 {
+    margin-bottom: var(--spacing-unit);
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+.bulk-actions button {
+    margin-bottom: var(--spacing-unit);
+}
+
+/* --- Layout: Students Container --- */
+.students-container {
+    flex: 1; /* Grow to fill remaining horizontal space */
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start; /* Align items to the top */
+    gap: calc(var(--spacing-unit) * 4);
+    padding: calc(var(--spacing-unit) * 4);
+    overflow-y: auto; /* Allow scrolling for the student grid */
+}
+
+/* --- Component: Student Card --- */
+.student-card {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: calc(var(--spacing-unit) * 3);
+    width: clamp(320px, calc(50% - var(--spacing-unit) * 2), 480px); /* Responsive width */
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    /* Removed max-height, let content define height, parent container handles scroll */
+    transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+.student-card:hover {
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+     /* transform: translateY(-2px); */ /* Optional: subtle lift on hover */
+}
+.student-card h3 {
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    font-size: 1.1rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: var(--spacing-unit);
+    word-break: break-all; /* Wrap long emails/IDs */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.student-card h3 small {
+    font-size: 0.8em;
+    color: var(--color-text-muted);
+    font-weight: normal;
+    margin-left: var(--spacing-unit);
+}
+
+.screenshot-container {
+    text-align: center;
+    margin-bottom: calc(var(--spacing-unit) * 3);
+    border-bottom: 1px solid #eee;
+    padding-bottom: calc(var(--spacing-unit) * 2);
+    position: relative; /* For potential overlays or indicators */
+}
+.screenshot-container img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--color-border);
+    background-color: #f0f0f0; /* Placeholder bg */
+    min-height: 150px; /* Ensure space even if image fails */
+    aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+    object-fit: contain; /* Fit image within bounds */
+}
+.screenshot-container p {
+    font-size: 0.8em;
+    color: var(--color-text-muted);
+    margin-top: var(--spacing-unit);
+    margin-bottom: 0;
+}
+
+.student-controls {
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-unit);
+}
+.student-controls button {
+    flex: 1 1 auto; /* Allow buttons to grow and shrink */
+    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
+    font-size: 0.85rem;
+}
+
+.student-tabs {
+    border-top: 1px solid #eee;
+    padding-top: calc(var(--spacing-unit) * 2);
+    font-size: 0.9em;
+    flex-grow: 1; /* Take remaining space if card height varies */
+    min-height: 100px; /* Minimum space for tabs */
+    max-height: 250px; /* Limit tab list height */
+    overflow-y: auto; /* Allow tab list scrolling */
+}
+.student-tabs h4 {
+    margin: 0 0 var(--spacing-unit) 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+.student-tabs ul {
+    /* Styles already defined in base */
+}
+.student-tabs li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(var(--spacing-unit) * 0.75) 0;
+    border-bottom: 1px dotted #eee;
+}
+.student-tabs li:last-child {
+    border-bottom: none;
+}
+.student-tabs li .tab-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-unit);
+    overflow: hidden; /* Needed for text-overflow */
+    flex-grow: 1;
+    margin-right: var(--spacing-unit);
+}
+.student-tabs li .tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    cursor: default; /* Indicate it's text */
+    max-width: 280px; /* Adjust based on card width */
+}
+.student-tabs li button { /* Close button */
+    background-color: transparent;
+    color: var(--color-danger);
+    border: none;
+    padding: 2px 6px;
+    font-size: 1.2em; /* Use icon font or SVG later */
+    line-height: 1;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-left: var(--spacing-unit);
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+}
+.student-tabs li button:hover {
+    background-color: var(--color-danger-dark);
+    color: var(--color-text-light);
+}
+.student-tabs li img.favicon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    vertical-align: middle; /* Better alignment */
+}
+
+/* --- Component: Buttons --- */
+button {
+    background-color: var(--color-primary);
+    color: var(--color-text-light);
+    border: none;
+    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    text-align: center;
+}
+button:hover { background-color: var(--color-primary-dark); }
+button:active { box-shadow: inset 0 1px 3px rgba(0,0,0,0.2); }
+button:disabled { background-color: var(--color-secondary); cursor: not-allowed; opacity: 0.7; }
+
+.action-button-secondary { background-color: var(--color-secondary); }
+.action-button-secondary:hover { background-color: var(--color-secondary-dark); }
+.action-button-success { background-color: var(--color-success); }
+.action-button-success:hover { background-color: var(--color-success-dark); }
+.action-button-danger { background-color: var(--color-danger); }
+.action-button-danger:hover { background-color: var(--color-danger-dark); }
+.action-button-warning { background-color: var(--color-warning); color: var(--color-dark); }
+.action-button-warning:hover { background-color: #e0a800; }
+.action-button-info { background-color: var(--color-info); }
+.action-button-info:hover { background-color: #138496; }
+
+
+/* Individual student controls styling */
+.student-controls button[data-action="lock-screen"] { background-color: var(--color-warning); color: var(--color-dark);}
+.student-controls button[data-action="lock-screen"]:hover { background-color: #e0a800; }
+.student-controls button[data-action="unlock-screen"] { background-color: var(--color-success); }
+.student-controls button[data-action="unlock-screen"]:hover { background-color: var(--color-success-dark); }
+
+
+/* --- Component: Connection Status --- */
+#connection-status {
+    font-weight: bold;
+    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+#connection-status.status-connected { background-color: var(--color-success); color: white; }
+#connection-status.status-disconnected { background-color: var(--color-danger); color: white; }
+#connection-status.status-connecting { background-color: var(--color-warning); color: var(--color-dark); }
+#connection-status.status-error { background-color: var(--color-danger); color: white; font-weight: bold; }
+
+/* --- Utility Classes --- */
+.hidden { display: none !important; }
+.placeholder {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    padding: calc(var(--spacing-unit) * 4);
+}
