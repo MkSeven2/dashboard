@@ -3,126 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saber Teacher Dashboard - Enhanced</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Saber Teacher Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
-<body>
-    <div class="dashboard-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h2 class="brand-logo">Saber</h2>
-                <button id="toggle-sidebar-btn" class="icon-button mobile-only" aria-label="Toggle Sidebar">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </div>
+<body class="dashboard-body">
 
-            <nav class="sidebar-nav">
-                <button class="nav-button active" data-view="class-session">
-                    <i class="fas fa-chalkboard-user"></i> Class Session
-                </button>
-                <button class="nav-button" data-view="settings">
-                    <i class="fas fa-cog"></i> Settings
-                </button>
-                </nav>
-
-            <div class="sidebar-session-controls" id="session-controls">
-                <h3>Session Controls</h3>
-                <button id="start-session-btn" class="button primary"><i class="fas fa-play"></i> Start Session</button>
-                <button id="end-session-btn" class="button danger hidden"><i class="fas fa-stop"></i> End Session</button>
-                <div id="session-timer" class="session-timer hidden">
-                    <i class="fas fa-clock"></i> Session Time: <span id="timer-display">00:00:00</span>
-                </div>
-            </div>
-
-             <div class="sidebar-actions" id="global-actions">
-                 <h3>Global Actions</h3>
-                 <p class="action-info">Apply to <strong id="selection-count">0</strong> selected students (or ALL if none selected)</p>
-                 <button id="lock-selected-btn" class="button action-btn"><i class="fas fa-lock"></i> Lock Screens</button>
-                 <button id="unlock-selected-btn" class="button action-btn"><i class="fas fa-unlock"></i> Unlock Screens</button>
-                 <button id="announce-selected-btn" class="button action-btn"><i class="fas fa-bullhorn"></i> Send Announcement</button>
-                 <button id="open-tab-selected-btn" class="button action-btn"><i class="fas fa-external-link-alt"></i> Open Tab</button>
-                 <button id="apply-blocklist-selected-btn" class="button action-btn"><i class="fas fa-ban"></i> Apply Blocklist</button>
-             </div>
-
-            <div class="sidebar-footer">
-                <div id="connection-status" class="status-indicator disconnected">
-                    <i class="fas fa-circle"></i> Disconnected
-                </div>
-                 <span id="student-count-display">0 Students</span>
-            </div>
-        </aside>
-
-        <main class="main-content" id="main-content">
-            <section id="view-class-session" class="dashboard-view active">
-                <header class="main-header">
-                    <h1>Class Session</h1>
-                    <div class="header-controls">
-                        <button id="select-all-btn" class="button outline"><i class="fas fa-check-double"></i> Select All</button>
-                        <button id="deselect-all-btn" class="button outline"><i class="fas fa-times"></i> Deselect All</button>
-                        </div>
-                </header>
-                <div class="students-grid-container" id="students-grid-container">
-                    <div id="students-grid">
-                        <p id="placeholder-message" class="placeholder">Start a session and wait for students to connect...</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="view-settings" class="dashboard-view hidden">
-                <header class="main-header">
-                    <h1>Settings</h1>
-                </header>
-                <div class="settings-container">
-                     <div class="setting-card">
-                        <h3><i class="fas fa-list-check"></i> Blocklist Management</h3>
-                        <p>Define URL patterns to block for students. Apply globally or to selected students from the sidebar.</p>
-                        <label for="blocklist-editor">Blocked URL Patterns (one per line):</label>
-                        <textarea id="blocklist-editor" rows="8" placeholder="e.g., *://*.coolmathgames.com/*&#10;*://*.youtube.com/*"></textarea>
-                        <button id="save-blocklist-btn" class="button primary"><i class="fas fa-save"></i> Save & Apply Blocklist</button>
-                     </div>
-                    <div class="setting-card">
-                         <h3><i class="fas fa-camera"></i> Screenshot Interval</h3>
-                         <p>Set how often screenshots are taken for students (minimum 1000ms). Applied individually or to selected students.</p>
-                         <label for="screenshot-interval-input">Interval (milliseconds):</label>
-                         <input type="number" id="screenshot-interval-input" value="5000" min="1000" step="1000">
-                         <button id="apply-interval-selected-btn" class="button primary"><i class="fas fa-check"></i> Apply Interval to Selected</button>
-                    </div>
-                     </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="modal-overlay" class="modal-overlay hidden"></div>
-
-    <div id="announcement-modal" class="modal hidden">
-        <button class="modal-close-btn" data-modal-id="announcement-modal">&times;</button>
-        <h3><i class="fas fa-bullhorn"></i> Send Announcement</h3>
-        <p>Send a message to selected students.</p>
-        <label for="announcement-message">Message:</label>
-        <textarea id="announcement-message" rows="3" placeholder="Enter your announcement..."></textarea>
-        <label for="announcement-duration">Duration (seconds):</label>
-        <input type="number" id="announcement-duration" value="7" min="1">
-        <div class="modal-actions">
-            <button id="send-announcement-confirm-btn" class="button primary">Send</button>
-            <button class="button outline modal-cancel-btn" data-modal-id="announcement-modal">Cancel</button>
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="logo">Saber</a>
+            <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
-    </div>
+        <ul class="nav-list">
+            <li class="nav-item active" data-view="screens-view">
+                <a href="#">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>My Classes</span>
+                </a>
+            </li>
+            <li class="nav-item" data-view="sessions-view">
+                <a href="#">
+                    <i class="fas fa-clock"></i>
+                    <span>Sessions</span>
+                </a>
+            </li>
+             <li class="nav-item" data-view="students-view">
+                <a href="#">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>Students</span>
+                </a>
+            </li>
+            <li class="nav-item" data-view="settings-view">
+                <a href="#">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+             <div id="connection-status" class="status-indicator disconnected">
+                <span class="dot"></span>
+                <span class="text">Disconnected</span>
+            </div>
+            </div>
+    </nav>
+
+    <main id="main-content">
+        <header class="main-header">
+            <div class="header-left">
+                 <h2 id="current-view-title">My Classes</h2> </div>
+            <div class="header-right">
+                <div id="session-controls">
+                    <select id="session-select" class="control-select hidden">
+                        <option value="">Select Active Session</option>
+                    </select>
+                    <span id="current-session-info" class="session-info">No Active Session</span>
+                     <button id="start-session-btn" class="btn btn-primary"><i class="fas fa-play"></i> Start Session</button>
+                     <button id="end-session-btn" class="btn btn-danger hidden"><i class="fas fa-stop"></i> End Session</button>
+                </div>
+                <div class="user-menu">
+                    <i class="fas fa-user-circle fa-2x"></i>
+                </div>
+            </div>
+        </header>
+
+        <div id="screens-view" class="view active">
+            <div class="view-toolbar">
+                <div class="selection-controls">
+                    <input type="checkbox" id="select-all-checkbox" class="checkbox-input" aria-label="Select all students">
+                    <label for="select-all-checkbox">Select All</label>
+                    <span id="selected-count">(0 Selected)</span>
+                </div>
+                <div class="action-buttons">
+                    <button id="lock-selected-btn" class="btn btn-secondary" title="Lock Selected Screens"><i class="fas fa-lock"></i> Lock</button>
+                    <button id="unlock-selected-btn" class="btn btn-secondary" title="Unlock Selected Screens"><i class="fas fa-unlock"></i> Unlock</button>
+                    <button id="open-tab-selected-btn" class="btn btn-secondary" title="Open Tab for Selected"><i class="fas fa-external-link-alt"></i> Open Tab</button>
+                    <button id="announce-selected-btn" class="btn btn-secondary" title="Send Announcement to Selected"><i class="fas fa-bullhorn"></i> Announce</button>
+                    <button id="block-site-selected-btn" class="btn btn-secondary" title="Update Blocklist for Selected"><i class="fas fa-ban"></i> Block Site</button>
+                    </div>
+                 <div class="view-options">
+                    <label for="sort-students">Sort by:</label>
+                    <select id="sort-students" class="control-select">
+                        <option value="name">Name</option>
+                        <option value="status">Status</option>
+                        </select>
+                     <label for="filter-students">Filter:</label>
+                    <input type="text" id="filter-students" placeholder="Filter by name/email..." class="control-input">
+                 </div>
+            </div>
+            <div id="student-grid" class="student-grid">
+                <p id="loading-students-placeholder">Loading student data...</p>
+                <p id="no-students-placeholder" class="hidden">No students connected in this session.</p>
+            </div>
+        </div>
+
+        <div id="sessions-view" class="view">
+            <h2>Manage Sessions</h2>
+            <p>Configure and manage your teaching sessions here.</p>
+            <div class="session-management">
+                <button id="create-new-session-btn" class="btn btn-primary">Create New Session</button>
+                <h3>Available Sessions:</h3>
+                <ul id="session-list">
+                    <li>Loading sessions...</li>
+                </ul>
+                 <h3>Start Ad-Hoc Session:</h3>
+                 <input type="text" id="adhoc-session-name" placeholder="Optional Session Name" class="control-input">
+                 <button id="start-adhoc-btn" class="btn btn-secondary">Start Ad-Hoc</button>
+            </div>
+        </div>
+
+        <div id="students-view" class="view">
+             <h2>Student Roster</h2>
+             <p>View and manage students enrolled in your classes or sessions.</p>
+              <div class="view-toolbar">
+                </div>
+             <table id="student-roster-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="roster-select-all"></th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Current Session</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="student-roster-body">
+                    <tr><td colspan="6">Loading student roster...</td></tr>
+                </tbody>
+             </table>
+        </div>
+
+
+        <div id="settings-view" class="view">
+            <h2>Dashboard Settings</h2>
+            <div class="settings-section">
+                <h3>Default Blocklist</h3>
+                <p>Set default URL patterns to block during sessions. Applied when starting a new session unless overridden.</p>
+                <textarea id="default-blocklist-input" rows="8" placeholder="*://*.youtube.com/*&#10;*://*.coolmathgames.com/*" class="control-textarea"></textarea>
+                <button id="save-default-blocklist-btn" class="btn btn-primary">Save Default Blocklist</button>
+            </div>
+             <div class="settings-section">
+                <h3>Default Screenshot Interval</h3>
+                <p>Set the default frequency (in milliseconds) for capturing student screenshots during sessions.</p>
+                <input type="number" id="default-interval-input" value="5000" min="2000" class="control-input">
+                <span>ms (Minimum: 2000ms)</span>
+                <button id="save-default-interval-btn" class="btn btn-primary">Save Default Interval</button>
+            </div>
+            </div>
+
+    </main>
 
     <div id="open-tab-modal" class="modal hidden">
-        <button class="modal-close-btn" data-modal-id="open-tab-modal">&times;</button>
-        <h3><i class="fas fa-external-link-alt"></i> Open Tab</h3>
-        <p>Open a new tab for selected students.</p>
-        <label for="open-tab-url">URL:</label>
-        <input type="url" id="open-tab-url" placeholder="https://example.com">
-        <div class="modal-actions">
-            <button id="open-tab-confirm-btn" class="button primary">Open</button>
-            <button class="button outline modal-cancel-btn" data-modal-id="open-tab-modal">Cancel</button>
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('open-tab-modal')">&times;</span>
+            <h3>Open Tab for Selected Students</h3>
+            <label for="open-tab-url">URL:</label>
+            <input type="url" id="open-tab-url" placeholder="https://example.com" class="control-input">
+            <button id="confirm-open-tab-btn" class="btn btn-primary">Open Tab</button>
         </div>
     </div>
 
-    <div id="notification-area" class="notification-area"></div>
+    <div id="announce-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('announce-modal')">&times;</span>
+            <h3>Send Announcement to Selected Students</h3>
+            <label for="announce-message">Message:</label>
+            <textarea id="announce-message" rows="3" placeholder="Enter your announcement..." class="control-textarea"></textarea>
+             <label for="announce-duration">Duration (ms):</label>
+             <input type="number" id="announce-duration" value="5000" min="1000" class="control-input">
+            <button id="confirm-announce-btn" class="btn btn-primary">Send Announcement</button>
+        </div>
+    </div>
+
+     <div id="block-site-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('block-site-modal')">&times;</span>
+            <h3>Update Blocklist for Selected Students</h3>
+            <p>Enter patterns (one per line) to block. This will overwrite their current blocklist for this session.</p>
+            <label for="block-patterns-input">Block Patterns:</label>
+            <textarea id="block-patterns-input" rows="5" placeholder="*://*.example-game-site.com/*" class="control-textarea"></textarea>
+            <button id="confirm-block-site-btn" class="btn btn-primary">Update Blocklist</button>
+        </div>
+    </div>
+
+    <template id="student-card-template">
+        <div class="student-card" data-client-id="">
+            <div class="card-header">
+                 <input type="checkbox" class="student-select-checkbox checkbox-input" aria-label="Select student">
+                 <span class="status-dot disconnected" title="Disconnected"></span>
+                 <span class="student-name">Student Name/Email</span>
+                 <div class="card-menu-btn"> <i class="fas fa-ellipsis-v"></i> </div>
+            </div>
+            <div class="screenshot-preview">
+                <img src="placeholder-screenshot.png" alt="Student screen preview" class="screenshot-img">
+                <div class="no-screenshot hidden">No Screenshot Available</div>
+                 <span class="last-updated">Updated: Never</span>
+            </div>
+            <div class="active-tab-info">
+                 <img src="placeholder-favicon.png" alt="favicon" class="favicon">
+                 <span class="tab-title" title="Website URL">Loading tab info...</span>
+            </div>
+            <div class="card-actions">
+                <button class="action-btn lock-btn" title="Lock Screen"><i class="fas fa-lock"></i></button>
+                <button class="action-btn unlock-btn" title="Unlock Screen"><i class="fas fa-unlock"></i></button>
+                <button class="action-btn open-tab-btn" title="Open Tab"><i class="fas fa-external-link-alt"></i></button>
+                <button class="action-btn message-btn" title="Send Message"><i class="fas fa-comment-alt"></i></button>
+                <button class="action-btn close-tab-btn" title="Close Current Tab"><i class="fas fa-times-circle"></i></button>
+            </div>
+             <div class="tab-list-preview hidden"> <ul></ul>
+            </div>
+        </div>
+    </template>
+
+     <template id="student-roster-row-template">
+        <tr data-client-id="">
+            <td><input type="checkbox" class="roster-select-checkbox"></td>
+            <td class="roster-name">Student Name</td>
+            <td class="roster-email">student@email.com</td>
+            <td class="roster-status"><span class="status-badge disconnected">Offline</span></td>
+            <td class="roster-session">None</td>
+            <td class="roster-actions">
+                 <button class="btn btn-sm btn-secondary" title="View Details"><i class="fas fa-eye"></i></button>
+                 <button class="btn btn-sm btn-secondary" title="Message"><i class="fas fa-comment-alt"></i></button>
+                 </td>
+        </tr>
+    </template>
+
 
     <script src="script.js"></script>
 </body>
