@@ -3,197 +3,1188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sabre Advanced Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
-</head>
-<body class="dashboard-body">
+    <title>Saber Teacher Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Basic styles for SortableJS dragging */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #cceeff;
+        }
 
-    <nav id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <a href="#" class="logo">SABRE <i class="fas fa-shield-alt"></i></a>
-            <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Sidebar">
-                <i class="fas fa-bars"></i>
+        /* Ensure icons are sized correctly */
+        .lucide {
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        /* Style for the placeholder when no screenshot is available */
+        .screenshot-placeholder {
+            background-color: #e2e8f0; /* coolGray-200 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            color: #64748b; /* coolGray-500 */
+            font-size: 0.8rem;
+            height: 100%; /* Ensure it fills the image container */
+            aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+        }
+         /* Prevent image stretching */
+        .student-screenshot-img {
+            object-fit: cover; /* Cover the area, might crop */
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+        }
+        /* Modal backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40; /* Below modal */
+        }
+        /* Modal positioning */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50; /* Above backdrop */
+            max-height: 90vh; /* Limit height */
+            overflow-y: auto; /* Allow scrolling within modal */
+        }
+        /* Mobile Sidebar */
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 60; /* Above modal */
+                width: 250px; /* Fixed width for mobile sidebar */
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #sidebar-backdrop {
+                display: none; /* Hidden by default */
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 55; /* Below sidebar, above content */
+            }
+            #sidebar.open + #sidebar-backdrop {
+                display: block; /* Show backdrop when sidebar is open */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen overflow-hidden">
+
+    <aside id="sidebar" class="bg-white w-64 h-full shadow-md flex flex-col md:relative fixed md:translate-x-0">
+        <div class="p-4 border-b flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-blue-600">Saber</h1>
+            <button id="close-sidebar-btn" class="md:hidden text-gray-500 hover:text-gray-700">
+                <i data-lucide="x" class="lucide"></i>
             </button>
         </div>
-        <ul class="nav-list">
-            <li class="nav-item active" data-view="screens">
-                <a href="#"><i class="fas fa-desktop"></i><span>Screens</span></a>
-            </li>
-            <li class="nav-item" data-view="timeline">
-                <a href="#"><i class="fas fa-stream"></i><span>Timeline</span></a>
-            </li>
-            <li class="nav-item" data-view="students">
-                <a href="#"><i class="fas fa-users"></i><span>Students</span></a>
-            </li>
-            <li class="nav-item" data-view="settings">
-                <a href="#"><i class="fas fa-sliders-h"></i><span>Filters & Settings</span></a>
-            </li>
-            <li class="nav-item" data-view="reports">
-                <a href="#"><i class="fas fa-chart-bar"></i><span>Reports</span></a>
-            </li>
-        </ul>
-        <div class="sidebar-footer">
-            <div id="connection-status" class="status-indicator disconnected">
-                <span class="dot"></span>
-                <span class="text">Disconnected</span>
-            </div>
-            <div class="user-profile">
-                <i class="fas fa-user-circle"></i>
-                <span class="username">Teacher Name</span>
-            </div>
-        </div>
-    </nav>
 
-    <main id="main-content">
-        <header class="main-header">
-            <div class="header-left">
-                <h2 id="view-title">Screens</h2>
-                <div id="session-info">
-                    <span class="session-status">No Active Session</span>
-                    <button id="start-session-btn" class="btn btn-success btn-sm"><i class="fas fa-play"></i> Start Session</button>
-                    <button id="end-session-btn" class="btn btn-danger btn-sm hidden"><i class="fas fa-stop"></i> End Session</button>
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2">
+            <a href="#dashboard" class="nav-link flex items-center space-x-2 p-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-200" data-section="dashboard">
+                <i data-lucide="layout-dashboard" class="lucide"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#reports" class="nav-link flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-200" data-section="reports">
+                <i data-lucide="bar-chart-3" class="lucide"></i>
+                <span>Reports</span>
+            </a>
+            <a href="#settings" class="nav-link flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-200" data-section="settings">
+                <i data-lucide="settings" class="lucide"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t text-sm text-gray-500">
+            <div id="connection-status" class="flex items-center space-x-1">
+                <span class="w-2 h-2 rounded-full bg-red-500 inline-block" id="status-indicator"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <div id="student-count">Students: 0</div>
+        </div>
+    </aside>
+
+    <div id="sidebar-backdrop" class="md:hidden"></div>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white shadow-sm p-4 flex items-center justify-between">
+            <button id="menu-btn" class="md:hidden text-gray-600 hover:text-gray-800 mr-4">
+                <i data-lucide="menu" class="lucide"></i>
+            </button>
+            <h2 id="section-title" class="text-xl font-semibold text-gray-800">Dashboard</h2>
+            <div>
                 </div>
-            </div>
-            <div class="header-right">
-                <button class="btn btn-icon" title="Notifications"><i class="fas fa-bell"></i></button>
-                <button class="btn btn-icon" title="Help"><i class="fas fa-question-circle"></i></button>
-            </div>
         </header>
 
-        <div class="views-container">
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <section id="dashboard-section" class="section-content">
+                <div class="mb-4 flex flex-wrap gap-2">
+                    </div>
 
-            <div id="screens-view" class="view active">
-                <div class="view-toolbar">
-                    <div class="toolbar-section">
-                        <input type="checkbox" id="select-all-students" class="checkbox-input">
-                        <label for="select-all-students">Select All</label>
-                        <span id="selected-count">(0 Selected)</span>
-                    </div>
-                    <div class="toolbar-section actions">
-                        <button id="lock-selected" class="btn btn-secondary btn-sm" title="Lock Selected"><i class="fas fa-lock"></i> Lock</button>
-                        <button id="unlock-selected" class="btn btn-secondary btn-sm" title="Unlock Selected"><i class="fas fa-unlock"></i> Unlock</button>
-                        <button id="open-tab-selected" class="btn btn-secondary btn-sm" title="Open Tab for Selected"><i class="fas fa-external-link-alt"></i> Open Tab</button>
-                        <button id="close-tab-selected" class="btn btn-secondary btn-sm" title="Close Active Tab for Selected"><i class="fas fa-times-circle"></i> Close Tab</button>
-                        <button id="announce-selected" class="btn btn-secondary btn-sm" title="Send Announcement"><i class="fas fa-bullhorn"></i> Announce</button>
-                        <button id="block-site-selected" class="btn btn-secondary btn-sm" title="Apply Blocklist"><i class="fas fa-ban"></i> Block Site</button>
-                         <button id="focus-selected" class="btn btn-secondary btn-sm" title="Focus Selected on URL"><i class="fas fa-crosshairs"></i> Focus</button>
-                    </div>
-                    <div class="toolbar-section view-options">
-                        <input type="search" id="student-search" placeholder="Search Students..." class="control-input input-sm">
-                        <select id="sort-students" class="control-select select-sm">
-                            <option value="name">Sort by Name</option>
-                            <option value="status">Sort by Status</option>
-                            <option value="activity">Sort by Activity</option>
-                        </select>
-                         <button id="layout-toggle" class="btn btn-icon btn-sm" title="Toggle Layout"><i class="fas fa-th-large"></i></button>
+                <div id="student-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <template id="student-card-template">
+                        <div class="student-card bg-white rounded-lg shadow overflow-hidden cursor-pointer flex flex-col" data-client-id="">
+                            <div class="screenshot-container relative bg-gray-200 aspect-video">
+                                <img class="student-screenshot-img w-full h-full object-cover" src="https://placehold.co/320x180/e2e8f0/64748b?text=Connecting..." alt="Student Screen Preview">
+                                <div class="screenshot-placeholder hidden">
+                                    <i data-lucide="monitor-off" class="lucide w-8 h-8 mb-1"></i>
+                                    <span>No Screenshot</span>
+                                </div>
+                            </div>
+                            <div class="p-3 border-t border-gray-200 flex-grow">
+                                <p class="student-email font-semibold text-sm truncate" title="student@example.com">student@example.com</p>
+                                <div class="flex items-center text-xs text-gray-500 mt-1">
+                                    <img class="student-favicon w-4 h-4 mr-1" src="https://placehold.co/16x16/cccccc/999999?text=?" alt="favicon">
+                                    <span class="student-active-tab-title truncate">Loading tab info...</span>
+                                </div>
+                            </div>
+                             <div class="p-2 bg-gray-50 border-t flex justify-end space-x-1">
+                                 <button class="action-btn lock-btn p-1 text-gray-500 hover:text-red-600" title="Lock Screen">
+                                     <i data-lucide="lock" class="lucide w-4 h-4"></i>
+                                 </button>
+                                 <button class="action-btn message-btn p-1 text-gray-500 hover:text-blue-600" title="Send Message">
+                                     <i data-lucide="message-square" class="lucide w-4 h-4"></i>
+                                 </button>
+                                 <button class="action-btn close-tab-btn p-1 text-gray-500 hover:text-orange-600" title="Close Active Tab">
+                                     <i data-lucide="x-circle" class="lucide w-4 h-4"></i>
+                                 </button>
+                             </div>
+                        </div>
+                    </template>
+                </div>
+                <div id="no-students-message" class="text-center text-gray-500 py-10 hidden">
+                    <i data-lucide="users" class="lucide w-12 h-12 mx-auto mb-2"></i>
+                    <p>No students connected yet.</p>
+                    <p class="text-sm">Ensure the Saber extension is active on student devices.</p>
+                </div>
+            </section>
+
+            <section id="reports-section" class="section-content hidden">
+                <h3 class="text-lg font-semibold mb-4">Student Reports</h3>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-600">View student activity reports, Browse history summaries, and time spent on different sites.</p>
+                    <p class="text-gray-500 text-sm mt-2">(Requires significant backend data collection and processing)</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border rounded-lg p-4">
+                            <h4 class="font-medium">Top Visited Domains (Example)</h4>
+                            <ul class="list-disc list-inside text-sm text-gray-700 mt-2">
+                                <li>google.com (n/a)</li>
+                                <li>classroom.google.com (n/a)</li>
+                                <li>youtube.com (n/a)</li>
+                                </ul>
+                        </div>
+                         <div class="border rounded-lg p-4">
+                             <h4 class="font-medium">Student Activity Overview</h4>
+                             <p class="text-sm text-gray-700 mt-2">Select a student to view their detailed report.</p>
+                             <select id="report-student-select" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                 <option>Select Student...</option>
+                                 </select>
+                         </div>
                     </div>
                 </div>
-                <div id="student-grid" class="student-grid">
-                    <div class="placeholder-message" id="loading-placeholder">Loading students...</div>
-                    <div class="placeholder-message hidden" id="no-students-placeholder">No students connected.</div>
-                </div>
-            </div>
+            </section>
 
-            <div id="timeline-view" class="view">
-                 <h2>Activity Timeline</h2>
-                 <p>View a chronological feed of student activity (Placeholder).</p>
-                 </div>
-             <div id="students-view" class="view">
-                 <h2>Manage Students</h2>
-                 <p>View student roster, groups, and details (Placeholder).</p>
-                 </div>
-            <div id="settings-view" class="view">
-                 <h2>Filters & Settings</h2>
-                 <p>Configure website filters, session settings, and advanced options (Placeholder).</p>
-                 <div class="settings-form">
-                    <label for="default-blocklist">Default Blocklist (one pattern per line):</label>
-                    <textarea id="default-blocklist" rows="5" placeholder="*://*.example.com/*"></textarea>
-                    <button class="btn btn-primary">Save Blocklist</button>
-                 </div>
-            </div>
-            <div id="reports-view" class="view">
-                 <h2>Reports</h2>
-                 <p>View session summaries and student activity reports (Placeholder).</p>
-                 </div>
-
-        </div> </main> <div id="open-tab-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal-btn" data-modal-id="open-tab-modal">&times;</span>
-            <h3>Open Tab for Selected Students</h3>
-            <label for="open-tab-url">Enter URL:</label>
-            <input type="url" id="open-tab-url" placeholder="https://example.com" required>
-            <button id="confirm-open-tab" class="btn btn-primary">Open Tab</button>
-        </div>
-    </div>
-
-     <div id="announce-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal-btn" data-modal-id="announce-modal">&times;</span>
-            <h3>Send Announcement</h3>
-            <label for="announce-message">Message:</label>
-            <textarea id="announce-message" rows="3" required></textarea>
-             <label for="announce-duration">Duration (seconds):</label>
-             <input type="number" id="announce-duration" value="10" min="1">
-            <button id="confirm-announce" class="btn btn-primary">Send</button>
-        </div>
-    </div>
-
-     <div id="student-detail-modal" class="modal modal-large hidden">
-         <div class="modal-content">
-              <span class="close-modal-btn" data-modal-id="student-detail-modal">&times;</span>
-              <h3 id="detail-student-name">Student Detail</h3>
-              <div class="student-detail-layout">
-                   <div class="detail-screen-view">
-                        <img id="detail-screenshot" src="placeholder.png" alt="Student Screen">
-                        <div class="detail-screen-controls">
-                             <button class="btn btn-sm btn-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
-                             <button class="btn btn-sm btn-warning"><i class="fas fa-eye"></i> Live View</button>
-                        </div>
-                   </div>
-                   <div class="detail-info-panel">
-                        <h4>Active Tab</h4>
-                        <p id="detail-active-tab">Loading...</p>
-                        <h4>Open Tabs</h4>
-                        <ul id="detail-tab-list"><li>Loading...</li></ul>
-                        <h4>Recent Activity</h4>
-                        <ul id="detail-activity-log"><li>Loading...</li></ul>
-                        <div class="detail-actions">
-                            <button class="btn btn-secondary"><i class="fas fa-lock"></i> Lock</button>
-                            <button class="btn btn-secondary"><i class="fas fa-comment-dots"></i> Message</button>
-                            <button class="btn btn-danger"><i class="fas fa-power-off"></i> Close Browser</button>
-                        </div>
-                   </div>
-              </div>
-         </div>
-     </div>
-
-
-    <template id="student-card-template">
-        <div class="student-card" data-client-id="">
-            <div class="card-header">
-                <input type="checkbox" class="student-select checkbox-input">
-                <span class="status-dot"></span>
-                <span class="student-name">Student Name</span>
-                <div class="card-menu">
-                    <button class="btn btn-icon btn-sm card-action-btn" title="More actions"><i class="fas fa-ellipsis-v"></i></button>
+            <section id="settings-section" class="section-content hidden">
+                <h3 class="text-lg font-semibold mb-4">Settings</h3>
+                <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                    <div>
+                        <label for="screenshot-interval" class="block text-sm font-medium text-gray-700">Screenshot Interval (ms)</label>
+                        <input type="number" id="screenshot-interval" name="screenshot-interval" value="5000" min="1000" step="1000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <button id="save-screenshot-interval" class="mt-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 rounded-lg shadow text-sm">Update Interval for All Students</button>
+                        <p class="text-xs text-gray-500 mt-1">Set how often student screenshots are taken (min 1000ms). Lower values increase network load. This setting will be sent to all currently connected students.</p>
+                    </div>
+                     <hr>
+                     <div>
+                         <label for="blocklist" class="block text-sm font-medium text-gray-700">Blocked Websites (Patterns)</label>
+                         <textarea id="blocklist" name="blocklist" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="*://*.coolmathgames.com/*
+*://*.youtube.com/*
+*://some.specific.site/path/*"></textarea>
+                         <button id="save-blocklist" class="mt-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 rounded-lg shadow text-sm">Update Blocklist for All Students</button>
+                          <p class="text-xs text-gray-500 mt-1">Enter URL patterns to block (one per line). Use * as a wildcard. Example: `*://*.example.com/*`. This list will be sent to all currently connected students.</p>
                      </div>
-            </div>
-            <div class="screenshot-container" title="Click to view details">
-                <img src="placeholder.png" alt="Screenshot" class="screenshot-img">
-                <div class="no-screenshot-overlay hidden">No Screenshot</div>
-                <div class="last-updated">Never</div>
-                 <div class="card-lock-overlay hidden"><i class="fas fa-lock"></i> Locked</div>
-            </div>
-            <div class="card-footer">
-                <img src="favicon.png" alt="favicon" class="favicon">
-                <span class="tab-title" title="Tab URL">No active tab</span>
-                <button class="btn btn-icon btn-sm card-action-btn close-tab-btn" title="Close Active Tab"><i class="fas fa-times"></i></button>
-            </div>
+                     </div>
+            </section>
         </div>
-    </template>
+    </main>
 
-    <script src="script.js"></script>
+    <div id="student-modal" class="fixed inset-0 z-50 items-center justify-center hidden bg-black bg-opacity-50">
+        <div class="modal bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-2/3 max-w-4xl flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold modal-student-email">Student Details</h3>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="lucide"></i>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <h4 class="text-sm font-medium mb-2 text-gray-600">Live Screen</h4>
+                    <div class="modal-screenshot-container bg-gray-200 rounded overflow-hidden aspect-video relative">
+                         <img id="modal-screenshot-img" class="w-full h-full object-contain" src="https://placehold.co/640x360/e2e8f0/64748b?text=Loading..." alt="Large Student Screen">
+                         <div id="modal-screenshot-placeholder" class="absolute inset-0 screenshot-placeholder hidden">
+                             <i data-lucide="monitor-off" class="lucide w-12 h-12 mb-2"></i>
+                             <span>No Screenshot Available</span>
+                         </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-1 flex flex-col">
+                     <h4 class="text-sm font-medium mb-2 text-gray-600">Open Tabs (<span id="modal-tab-count">0</span>)</h4>
+                     <div id="modal-tab-list" class="flex-1 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50 mb-4 max-h-60 lg:max-h-none">
+                         <p class="text-xs text-gray-400 text-center py-4">No tab information received yet.</p>
+                     </div>
+                     <h4 class="text-sm font-medium mb-2 text-gray-600">Actions</h4>
+                     <div class="space-y-2">
+                         <button id="modal-lock-btn" class="w-full flex items-center justify-center space-x-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">
+                             <i data-lucide="lock" class="lucide w-4 h-4"></i>
+                             <span>Lock Screen</span>
+                         </button>
+                          <button id="modal-unlock-btn" class="w-full flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">
+                             <i data-lucide="unlock" class="lucide w-4 h-4"></i>
+                             <span>Unlock Screen</span>
+                         </button>
+                         <div class="flex space-x-2">
+                             <input type="text" id="modal-open-url-input" placeholder="https://example.com" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm">
+                             <button id="modal-open-tab-btn" class="flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white font-semibold p-2 rounded-lg shadow" title="Open New Tab">
+                                 <i data-lucide="external-link" class="lucide w-4 h-4"></i>
+                             </button>
+                         </div>
+                         <div class="flex space-x-2">
+                             <input type="text" id="modal-announce-input" placeholder="Enter announcement..." class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm">
+                             <button id="modal-announce-btn" class="flex-shrink-0 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold p-2 rounded-lg shadow" title="Send Announcement">
+                                 <i data-lucide="megaphone" class="lucide w-4 h-4"></i>
+                             </button>
+                         </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2">
+        <template id="toast-template">
+            <div class="toast bg-gray-800 text-white p-3 rounded-lg shadow-md text-sm flex items-center space-x-2 transition-opacity duration-300 ease-out opacity-0" role="alert">
+                <span class="toast-icon"></span>
+                <span class="toast-message">Message here</span>
+                <button class="toast-close ml-auto text-gray-400 hover:text-white">×</button>
+            </div>
+        </template>
+    </div>
+
+
+    <script>
+        // --- Constants and State ---
+        const WS_URL = "wss://extension.mkseven1.com"; // WebSocket server URL
+        const RECONNECT_DELAY = 5000; // 5 seconds
+        const PING_INTERVAL = 30000; // 30 seconds
+        let ws = null;
+        let pingIntervalId = null;
+        let reconnectTimeoutId = null;
+        let students = new Map(); // Map<clientId, { email: string, lastSeen: number, currentTabs: object, element: HTMLElement, screenshotUrl?: string, activeTab?: object }>
+        let currentModalClientId = null;
+
+        // --- DOM Elements ---
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const studentCountElement = document.getElementById('student-count');
+        const studentGrid = document.getElementById('student-grid');
+        const studentCardTemplate = document.getElementById('student-card-template');
+        const noStudentsMessage = document.getElementById('no-students-message');
+        const studentModal = document.getElementById('student-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const modalStudentEmail = studentModal.querySelector('.modal-student-email');
+        const modalScreenshotImg = document.getElementById('modal-screenshot-img');
+        const modalScreenshotPlaceholder = document.getElementById('modal-screenshot-placeholder');
+        const modalTabList = document.getElementById('modal-tab-list');
+        const modalTabCount = document.getElementById('modal-tab-count');
+        const modalLockBtn = document.getElementById('modal-lock-btn');
+        const modalUnlockBtn = document.getElementById('modal-unlock-btn');
+        const modalOpenTabBtn = document.getElementById('modal-open-tab-btn');
+        const modalOpenUrlInput = document.getElementById('modal-open-url-input');
+        const modalAnnounceBtn = document.getElementById('modal-announce-btn');
+        const modalAnnounceInput = document.getElementById('modal-announce-input');
+        const sectionTitle = document.getElementById('section-title');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.section-content');
+        const menuBtn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+        const toastContainer = document.getElementById('toast-container');
+        const toastTemplate = document.getElementById('toast-template');
+        const settingsScreenshotIntervalInput = document.getElementById('screenshot-interval');
+        const settingsSaveScreenshotIntervalBtn = document.getElementById('save-screenshot-interval');
+        const settingsBlocklistTextarea = document.getElementById('blocklist');
+        const settingsSaveBlocklistBtn = document.getElementById('save-blocklist');
+        const reportStudentSelect = document.getElementById('report-student-select');
+
+
+        // --- WebSocket Functions ---
+
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log("WebSocket already open.");
+                return;
+            }
+            if (ws && ws.readyState === WebSocket.CONNECTING) {
+                console.log("WebSocket connection attempt already in progress.");
+                return;
+            }
+
+            clearTimeout(reconnectTimeoutId); // Clear any pending reconnect attempts
+            console.log(`Attempting to connect to ${WS_URL}...`);
+            updateStatus('Connecting...', 'orange');
+
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                console.log("WebSocket connection established.");
+                updateStatus('Connected', 'green');
+                // Identify as teacher
+                sendMessage({ type: 'teacher_connect' });
+                // Start ping interval
+                startPing();
+                // Server will send initial list, no need to clear students here explicitly
+                // unless you want immediate visual feedback before server response.
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    // console.log("Message received:", message); // Can be noisy
+                    handleWebSocketMessage(message);
+                } catch (error) {
+                    console.error("Error parsing message:", error, event.data);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket error:", error);
+                // The 'onclose' event will handle cleanup and reconnection attempt
+            };
+
+            ws.onclose = (event) => {
+                console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
+                ws = null; // Clear the reference
+                stopPing();
+                updateStatus('Disconnected', 'red');
+                // Mark all students as potentially disconnected visually? (Optional)
+                // students.forEach(student => updateStudentCardStatus(student.element, 'disconnected'));
+
+                // Attempt to reconnect
+                scheduleReconnect();
+            };
+        }
+
+        function sendMessage(payload) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try {
+                    // console.log("Sending message:", payload); // Can be noisy
+                    ws.send(JSON.stringify(payload));
+                } catch (error) {
+                    console.error("Error sending WebSocket message:", error);
+                }
+            } else {
+                console.warn("WebSocket not open. Message not sent:", payload);
+                showToast("Connection error. Cannot send command.", "error");
+            }
+        }
+
+        function scheduleReconnect() {
+            clearTimeout(reconnectTimeoutId); // Clear previous attempts
+            stopPing(); // Ensure ping stops
+            console.log(`Scheduling reconnect in ${RECONNECT_DELAY / 1000}s...`);
+            reconnectTimeoutId = setTimeout(connectWebSocket, RECONNECT_DELAY);
+        }
+
+        function startPing() {
+            stopPing(); // Clear existing interval just in case
+            pingIntervalId = setInterval(() => {
+                sendMessage({ type: 'ping' });
+            }, PING_INTERVAL);
+        }
+
+        function stopPing() {
+            clearInterval(pingIntervalId);
+            pingIntervalId = null;
+        }
+
+        // --- WebSocket Message Handling ---
+
+        function handleWebSocketMessage(message) {
+            const { type, data } = message;
+
+            // console.log(`Handling WS Message: ${type}`); // Debug log
+
+            switch (type) {
+                case 'pong':
+                    // Server acknowledged ping
+                    break;
+                case 'server_ack': // General acknowledgement from server
+                    console.log("Server Ack:", data?.message);
+                    break;
+                case 'error': // Error message from server
+                    console.error("Server Error:", data?.message);
+                    showToast(`Server Error: ${data?.message || 'Unknown error'}`, "error");
+                    break;
+                case 'initial_student_list':
+                    console.log("Received initial student list:", data);
+                    clearStudentGrid();
+                    students.clear();
+                    if (Array.isArray(data)) {
+                        data.forEach(studentData => addStudent(studentData.clientId, studentData.email));
+                    }
+                    updateStudentCount();
+                    updateReportStudentDropdown(); // Update dropdown after getting list
+                    checkEmptyGrid();
+                    break;
+                case 'student_connected':
+                    console.log("Student connected:", data);
+                    addStudent(data.clientId, data.email);
+                    updateStudentCount();
+                    updateReportStudentDropdown();
+                    checkEmptyGrid();
+                    showToast(`${data.email || data.clientId} connected.`, "success");
+                    break;
+                case 'student_disconnected':
+                    console.log("Student disconnected:", data);
+                    const disconnectedStudentEmail = students.get(data.clientId)?.email; // Get email before removing
+                    removeStudent(data.clientId);
+                    updateStudentCount();
+                    updateReportStudentDropdown();
+                    checkEmptyGrid();
+                    // If the disconnected student's modal was open, close it
+                    if (currentModalClientId === data.clientId) {
+                        closeStudentModal();
+                    }
+                    showToast(`Student ${disconnectedStudentEmail || data.clientId} disconnected.`, "warning");
+                    break;
+                // --- Specific Tab Event Handling ---
+                case 'student_tabs_update': // Full refresh
+                     console.log("Handling full tabs_update for:", data.clientId);
+                    updateStudentTabData(data.clientId, type, data.payload);
+                    break;
+                case 'student_tab_created':
+                case 'student_tab_updated':
+                case 'student_tab_removed':
+                     console.log(`Handling ${type} for:`, data.clientId);
+                    updateStudentTabData(data.clientId, type, data.payload);
+                    break;
+                // --- Screenshot Handling ---
+                case 'student_screenshot':
+                    // console.log("Screenshot received for:", data.clientId);
+                    updateStudentScreenshot(data.clientId, data.payload.imageData, data.payload.tabId);
+                    break;
+                case 'student_screenshot_error':
+                case 'student_screenshot_skipped':
+                     console.warn(`Screenshot issue for ${data.clientId}: ${type}`, data.payload);
+                     updateStudentScreenshot(data.clientId, null, data.payload?.tabId, type); // Pass null data and the type
+                    break;
+                // --- Command Feedback ---
+                case 'command_failed':
+                    console.error("Command failed:", data);
+                    showToast(`Command failed for ${students.get(data.targetClientId)?.email || data.targetClientId}: ${data.reason}`, "error");
+                    break;
+                default:
+                    console.warn("Received unhandled message type:", type, data);
+            }
+        }
+
+        // --- Student Data and UI Update Functions ---
+
+         function updateStudentTabData(clientId, type, payload) {
+            const student = students.get(clientId);
+            if (!student) return;
+
+            student.lastSeen = Date.now();
+
+            // Modify the local student.currentTabs based on the event type
+            switch (type) {
+                case 'student_tabs_update': // Payload is the complete tabs object
+                    student.currentTabs = payload || {};
+                    break;
+                case 'student_tab_created': // Payload is the new tab object
+                case 'student_tab_updated': // Payload is the updated tab object
+                    if (payload && payload.id) {
+                        student.currentTabs[payload.id] = payload;
+                    }
+                    break;
+                case 'student_tab_removed': // Payload is { id: tabId }
+                    if (payload && payload.id) {
+                        delete student.currentTabs[payload.id];
+                    }
+                    break;
+            }
+
+             // After updating data, re-render the relevant UI parts
+             renderStudentTabInfo(clientId);
+         }
+
+
+        function renderStudentTabInfo(clientId) {
+            const student = students.get(clientId);
+            if (!student) return;
+
+            // Find the active tab from the *current* local state
+            let activeTab = null;
+            for (const tabId in student.currentTabs) {
+                if (student.currentTabs[tabId]?.active) {
+                    activeTab = student.currentTabs[tabId];
+                    break;
+                }
+            }
+            student.activeTab = activeTab; // Store reference for quick access (e.g., close tab button)
+
+            // Update the small card preview
+            const cardFavicon = student.element.querySelector('.student-favicon');
+            const cardTitle = student.element.querySelector('.student-active-tab-title');
+
+            if (activeTab) {
+                cardFavicon.src = activeTab.favIconUrl || 'https://placehold.co/16x16/cccccc/999999?text=?';
+                cardFavicon.alt = activeTab.title || 'favicon';
+                cardFavicon.onerror = () => { cardFavicon.src = 'https://placehold.co/16x16/cccccc/999999?text=?'; }; // Fallback
+
+                let titleText = 'Untitled';
+                 if (activeTab.title) {
+                    titleText = activeTab.title;
+                } else if (activeTab.url) {
+                    try { // Use try-catch for URL parsing as well
+                         titleText = new URL(activeTab.url).hostname;
+                     } catch (e) {
+                         titleText = 'Invalid URL';
+                     }
+                 }
+                 cardTitle.textContent = titleText;
+
+            } else {
+                // Handle case where no active tab is found
+                cardFavicon.src = 'https://placehold.co/16x16/cccccc/999999?text=?';
+                cardFavicon.alt = 'favicon';
+                cardTitle.textContent = 'No active tab';
+            }
+
+            // If the modal is open for this student, update its tab list
+            if (currentModalClientId === clientId) {
+                populateModalTabs(student.currentTabs);
+            }
+        }
+
+
+        function updateStatus(text, color) {
+            statusText.textContent = text;
+            statusIndicator.className = `w-2 h-2 rounded-full bg-${color}-500 inline-block`;
+        }
+
+        function updateStudentCount() {
+            studentCountElement.textContent = `Students: ${students.size}`;
+        }
+
+        function clearStudentGrid() {
+            studentGrid.innerHTML = ''; // Remove all student cards
+        }
+
+        function checkEmptyGrid() {
+             if (students.size === 0) {
+                 noStudentsMessage.classList.remove('hidden');
+                 studentGrid.classList.add('hidden'); // Hide grid if empty
+             } else {
+                 noStudentsMessage.classList.add('hidden');
+                 studentGrid.classList.remove('hidden'); // Show grid if not empty
+             }
+        }
+
+        function addStudent(clientId, email) {
+            if (students.has(clientId)) {
+                console.warn(`Student ${clientId} already exists. Updating email.`);
+                 const existingStudent = students.get(clientId);
+                 existingStudent.email = email;
+                 const emailElement = existingStudent.element.querySelector('.student-email');
+                 if(emailElement) {
+                    emailElement.textContent = email || clientId;
+                    emailElement.title = email || clientId;
+                 }
+                return; // Don't add duplicate card
+            }
+
+            const templateClone = studentCardTemplate.content.cloneNode(true);
+            const studentCard = templateClone.querySelector('.student-card');
+            studentCard.dataset.clientId = clientId;
+
+            const emailElement = studentCard.querySelector('.student-email');
+            emailElement.textContent = email || clientId; // Use clientId if email is missing
+            emailElement.title = email || clientId;
+
+            // Add event listener to open modal on card click (but not on button clicks)
+            studentCard.addEventListener('click', (event) => {
+                 // Prevent modal opening if a button inside the card was clicked
+                 if (event.target.closest('.action-btn')) {
+                     return;
+                 }
+                 openStudentModal(clientId);
+            });
+
+             // Add event listeners for action buttons within the card
+            const lockBtn = studentCard.querySelector('.lock-btn');
+            lockBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click event
+                sendTeacherCommand(clientId, 'lock_screen');
+                showToast(`Sent lock command to ${email || clientId}`, 'info');
+            });
+
+            const messageBtn = studentCard.querySelector('.message-btn');
+            messageBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const message = prompt(`Enter message/announcement for ${email || clientId}:`);
+                if (message) {
+                    sendTeacherCommand(clientId, 'send_announcement', { message: message });
+                    showToast(`Sent announcement to ${email || clientId}`, 'info');
+                }
+            });
+
+            const closeTabBtn = studentCard.querySelector('.close-tab-btn');
+              closeTabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const studentData = students.get(clientId);
+                const activeTab = studentData?.activeTab; // Get the currently known active tab from the rendered state
+
+                 if (activeTab && activeTab.id) {
+                      if (confirm(`Close tab "${activeTab.title || activeTab.url}" for ${email || clientId}?`)) {
+                          sendTeacherCommand(clientId, 'close_tab', { tabId: activeTab.id });
+                          showToast(`Sent close tab command for "${activeTab.title || 'active tab'}" to ${email || clientId}`, 'info');
+                      }
+                 } else {
+                      showToast(`Cannot determine active tab for ${email || clientId} to close.`, 'warning');
+                 }
+            });
+
+
+            studentGrid.appendChild(studentCard);
+            students.set(clientId, {
+                email: email,
+                element: studentCard,
+                currentTabs: {}, // Initialize empty, will be populated by updates
+                lastSeen: Date.now(),
+                activeTab: null, // Initialize activeTab
+                screenshotUrl: null // Initialize screenshotUrl
+            });
+
+             checkEmptyGrid(); // Hide 'no students' message if needed
+             // Request initial data for the new student? Optional, depends on server logic.
+             // sendMessage({ type: 'teacher_request_student_data', data: { clientId: clientId }});
+        }
+
+        function removeStudent(clientId) {
+            const student = students.get(clientId);
+            if (student && student.element) {
+                student.element.remove();
+            }
+            students.delete(clientId);
+             checkEmptyGrid(); // Show 'no students' message if needed
+        }
+
+         function updateStudentScreenshot(clientId, imageDataUrl, tabId, status = 'ok') {
+             const student = students.get(clientId);
+             if (!student) return;
+
+             student.lastSeen = Date.now();
+             const imgElement = student.element.querySelector('.student-screenshot-img');
+             const placeholderElement = student.element.querySelector('.screenshot-placeholder');
+
+             if (imageDataUrl && status === 'ok') {
+                 student.screenshotUrl = imageDataUrl; // Store the latest URL
+                 imgElement.src = imageDataUrl;
+                 imgElement.classList.remove('hidden');
+                 placeholderElement.classList.add('hidden');
+                 // Update modal if open
+                 if (currentModalClientId === clientId) {
+                     modalScreenshotImg.src = imageDataUrl;
+                     modalScreenshotImg.classList.remove('hidden');
+                     modalScreenshotPlaceholder.classList.add('hidden');
+                 }
+             } else {
+                 // Handle error or skipped screenshot
+                 student.screenshotUrl = null; // Clear stored URL
+                 imgElement.classList.add('hidden');
+                 placeholderElement.classList.remove('hidden');
+                 // Update placeholder text based on status
+                 const placeholderIcon = placeholderElement.querySelector('i');
+                 const placeholderText = placeholderElement.querySelector('span');
+                  if (status === 'student_screenshot_error') {
+                       placeholderIcon.dataset.lucide = 'alert-circle';
+                       placeholderText.textContent = 'Error Loading';
+                  } else if (status === 'student_screenshot_skipped') {
+                       placeholderIcon.dataset.lucide = 'eye-off';
+                       placeholderText.textContent = 'Capture Skipped';
+                  } else { // Default 'no screenshot'
+                       placeholderIcon.dataset.lucide = 'monitor-off';
+                       placeholderText.textContent = 'No Screenshot';
+                  }
+                  lucide.createIcons(); // Re-render icon if changed
+
+                  // Update modal if open
+                  if (currentModalClientId === clientId) {
+                      modalScreenshotImg.classList.add('hidden');
+                      modalScreenshotPlaceholder.classList.remove('hidden');
+                      // Update modal placeholder text too
+                      const modalPlaceholderIcon = modalScreenshotPlaceholder.querySelector('i');
+                      const modalPlaceholderText = modalScreenshotPlaceholder.querySelector('span');
+                       modalPlaceholderIcon.dataset.lucide = placeholderIcon.dataset.lucide;
+                       modalPlaceholderText.textContent = placeholderText.textContent;
+                       lucide.createIcons();
+                  }
+             }
+         }
+
+        // --- Modal Functions ---
+
+        function openStudentModal(clientId) {
+            const student = students.get(clientId);
+            if (!student) return;
+
+            currentModalClientId = clientId; // Store which student is being viewed
+
+            modalStudentEmail.textContent = student.email || clientId;
+
+            // Set initial screenshot (use stored URL or placeholder)
+            if (student.screenshotUrl) {
+                modalScreenshotImg.src = student.screenshotUrl;
+                modalScreenshotImg.classList.remove('hidden');
+                modalScreenshotPlaceholder.classList.add('hidden');
+            } else {
+                modalScreenshotImg.src = 'https://placehold.co/640x360/e2e8f0/64748b?text=Loading...'; // Reset placeholder src
+                modalScreenshotImg.classList.add('hidden');
+                modalScreenshotPlaceholder.classList.remove('hidden');
+                 // Set appropriate placeholder icon/text based on last known status if needed
+                 const cardPlaceholder = student.element.querySelector('.screenshot-placeholder');
+                 const cardPlaceholderIcon = cardPlaceholder?.querySelector('i'); // Use optional chaining
+                 const cardPlaceholderText = cardPlaceholder?.querySelector('span');
+                 const modalPlaceholderIcon = modalScreenshotPlaceholder.querySelector('i');
+                 const modalPlaceholderText = modalScreenshotPlaceholder.querySelector('span');
+                 if (cardPlaceholder && !cardPlaceholder.classList.contains('hidden')) {
+                     modalPlaceholderIcon.dataset.lucide = cardPlaceholderIcon?.dataset.lucide || 'monitor-off';
+                     modalPlaceholderText.textContent = cardPlaceholderText?.textContent || 'No Screenshot Available';
+                 } else { // Default if card wasn't showing placeholder
+                     modalPlaceholderIcon.dataset.lucide = 'monitor-off';
+                     modalPlaceholderText.textContent = 'No Screenshot Available';
+                 }
+                 lucide.createIcons();
+            }
+
+            // Populate tab list using the locally stored data
+            populateModalTabs(student.currentTabs);
+
+            // Show modal
+            studentModal.classList.remove('hidden');
+            studentModal.classList.add('flex'); // Use flex for centering
+        }
+
+        function closeStudentModal() {
+            currentModalClientId = null;
+            studentModal.classList.add('hidden');
+            studentModal.classList.remove('flex');
+            // Clear inputs
+            modalOpenUrlInput.value = '';
+            modalAnnounceInput.value = '';
+        }
+
+        function populateModalTabs(tabsData) {
+            modalTabList.innerHTML = ''; // Clear previous tabs
+            const tabIds = Object.keys(tabsData);
+            modalTabCount.textContent = tabIds.length;
+
+            if (tabIds.length === 0) {
+                modalTabList.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No open tabs reported.</p>';
+                return;
+            }
+
+            tabIds.forEach(tabId => {
+                const tab = tabsData[tabId];
+                if (!tab) return; // Skip if tab data is missing
+
+                const tabElement = document.createElement('div');
+                tabElement.className = `flex items-center justify-between p-1.5 rounded text-xs ${tab.active ? 'bg-blue-100' : 'bg-white'} hover:bg-gray-100`;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex items-center space-x-1.5 overflow-hidden mr-2'; // Added margin right
+
+                const favicon = document.createElement('img');
+                favicon.src = tab.favIconUrl || 'https://placehold.co/16x16/cccccc/999999?text=?';
+                favicon.alt = 'favicon';
+                favicon.className = 'w-4 h-4 flex-shrink-0';
+                favicon.onerror = () => { favicon.src = 'https://placehold.co/16x16/cccccc/999999?text=?'; }; // Fallback
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'truncate';
+
+                // --- !! BUG FIX: URL Parsing !! ---
+                let hostname = 'Unknown Site';
+                try {
+                    // Only try to parse standard URLs
+                    if (tab.url && (tab.url.startsWith('http:') || tab.url.startsWith('https:'))) {
+                        hostname = new URL(tab.url).hostname;
+                    } else if (tab.url) {
+                        // For non-standard URLs like chrome://, just show the protocol or scheme
+                        hostname = tab.url.split(':')[0] + ' page';
+                    }
+                } catch (e) {
+                    console.warn(`Failed to parse URL for hostname: ${tab.url}`, e);
+                    hostname = 'Invalid URL'; // Fallback on parsing error
+                }
+                titleSpan.textContent = tab.title || hostname;
+                titleSpan.title = `${tab.title || 'No Title'}\n${tab.url || 'No URL'}`; // Show title and full URL on hover
+                // --- End Bug Fix ---
+
+                infoDiv.appendChild(favicon);
+                infoDiv.appendChild(titleSpan);
+                 if (tab.audible) {
+                     const soundIcon = document.createElement('i');
+                     soundIcon.dataset.lucide = 'volume-2';
+                     soundIcon.className = 'lucide w-3 h-3 text-gray-500 flex-shrink-0 ml-1';
+                     infoDiv.appendChild(soundIcon);
+                 }
+
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex-shrink-0';
+
+                const closeButton = document.createElement('button');
+                closeButton.className = 'p-0.5 text-gray-400 hover:text-red-600';
+                closeButton.title = 'Close Tab';
+                closeButton.innerHTML = '<i data-lucide="x" class="lucide w-3 h-3"></i>';
+                closeButton.onclick = () => {
+                    if (currentModalClientId && confirm(`Close tab "${tab.title || tab.url}"?`)) {
+                        sendTeacherCommand(currentModalClientId, 'close_tab', { tabId: tab.id });
+                    }
+                };
+
+                actionsDiv.appendChild(closeButton);
+
+                tabElement.appendChild(infoDiv);
+                tabElement.appendChild(actionsDiv);
+                modalTabList.appendChild(tabElement);
+            });
+            lucide.createIcons(); // Render any new icons
+        }
+
+        // --- Command Sending ---
+
+        function sendTeacherCommand(targetClientId, command, data = {}) {
+            if (!targetClientId) {
+                console.error("Cannot send command, targetClientId is missing.");
+                return;
+            }
+            const payload = {
+                type: 'teacher_command',
+                data: {
+                    targetClientId: targetClientId,
+                    command: command,
+                    data: data // This is the specific payload for the command
+                }
+            };
+            sendMessage(payload);
+        }
+
+        // --- Toast Notifications ---
+        function showToast(message, type = 'info', duration = 3000) {
+            const toastClone = toastTemplate.content.cloneNode(true);
+            const toastElement = toastClone.querySelector('.toast');
+            const messageSpan = toastElement.querySelector('.toast-message');
+            const iconSpan = toastElement.querySelector('.toast-icon');
+            const closeButton = toastElement.querySelector('.toast-close');
+
+            messageSpan.textContent = message;
+
+            let bgColor = 'bg-gray-800';
+            let icon = 'info'; // Default Lucide icon name
+
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-green-600';
+                    icon = 'check-circle';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-600';
+                    icon = 'alert-circle';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-500';
+                    icon = 'alert-triangle';
+                    break;
+                case 'info':
+                default:
+                    bgColor = 'bg-blue-600';
+                    icon = 'info';
+                    break;
+            }
+
+            toastElement.classList.replace('bg-gray-800', bgColor);
+            iconSpan.innerHTML = `<i data-lucide="${icon}" class="lucide w-4 h-4"></i>`;
+            lucide.createIcons(); // Render the icon
+
+            closeButton.onclick = () => {
+                toastElement.style.opacity = '0';
+                setTimeout(() => toastElement.remove(), 300); // Remove after fade out
+            };
+
+            toastContainer.appendChild(toastElement);
+
+            // Trigger fade in
+            requestAnimationFrame(() => {
+                 // Check if element is still in DOM before setting opacity
+                 if (toastElement.isConnected) {
+                     toastElement.style.opacity = '1';
+                 }
+            });
+
+
+            // Auto dismiss
+            setTimeout(() => {
+                 // Check if the element still exists before trying to fade out
+                  if (toastElement && toastElement.isConnected) { // Check if still mounted
+                     toastElement.style.opacity = '0';
+                     setTimeout(() => toastElement.remove(), 300); // Remove after fade out
+                  }
+            }, duration);
+        }
+
+
+        // --- Navigation ---
+        function setActiveSection(sectionId) {
+              // Update Section Title
+              const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+              if (activeLink) {
+                   sectionTitle.textContent = activeLink.querySelector('span').textContent;
+              }
+
+              // Show/Hide Sections
+              sections.forEach(section => {
+                   if (section.id === `${sectionId}-section`) {
+                       section.classList.remove('hidden');
+                   } else {
+                       section.classList.add('hidden');
+                   }
+              });
+
+              // Update Nav Link Styles
+              navLinks.forEach(link => {
+                   if (link.dataset.section === sectionId) {
+                       link.classList.add('bg-gray-200', 'text-gray-900', 'font-semibold');
+                       link.classList.remove('text-gray-700');
+                   } else {
+                       link.classList.remove('bg-gray-200', 'text-gray-900', 'font-semibold');
+                       link.classList.add('text-gray-700');
+                   }
+              });
+
+               // Close mobile sidebar on navigation
+              if (sidebar.classList.contains('open')) {
+                  sidebar.classList.remove('open');
+                  sidebarBackdrop.style.display = 'none';
+              }
+           }
+
+        // --- Helper to update report dropdown ---
+        function updateReportStudentDropdown() {
+             // Clear existing options (except the placeholder)
+            while (reportStudentSelect.options.length > 1) {
+                reportStudentSelect.remove(1);
+            }
+             // Add current students
+            students.forEach((student, clientId) => {
+                const option = document.createElement('option');
+                option.value = clientId;
+                option.textContent = student.email || clientId;
+                reportStudentSelect.appendChild(option);
+            });
+         }
+
+
+        // --- Event Listeners ---
+
+        // Modal close buttons
+        closeModalBtn.addEventListener('click', closeStudentModal);
+        studentModal.addEventListener('click', (event) => {
+            // Close modal if backdrop is clicked
+            if (event.target === studentModal) {
+                closeStudentModal();
+            }
+        });
+
+        // Modal action buttons
+        modalLockBtn.addEventListener('click', () => {
+            if (currentModalClientId) {
+                sendTeacherCommand(currentModalClientId, 'lock_screen');
+                showToast(`Sent lock command to ${students.get(currentModalClientId)?.email || currentModalClientId}`, 'info');
+            }
+        });
+        modalUnlockBtn.addEventListener('click', () => {
+            if (currentModalClientId) {
+                sendTeacherCommand(currentModalClientId, 'unlock_screen');
+                showToast(`Sent unlock command to ${students.get(currentModalClientId)?.email || currentModalClientId}`, 'info');
+            }
+        });
+        modalOpenTabBtn.addEventListener('click', () => {
+            const url = modalOpenUrlInput.value.trim();
+            if (currentModalClientId && url) {
+                 // Basic URL validation
+                 if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                      showToast('Please enter a valid URL starting with http:// or https://', 'warning');
+                      return;
+                 }
+                sendTeacherCommand(currentModalClientId, 'open_tab', { url: url });
+                showToast(`Sent open tab command (${url}) to ${students.get(currentModalClientId)?.email || currentModalClientId}`, 'info');
+                modalOpenUrlInput.value = ''; // Clear input
+            } else if (!url) {
+                 showToast('Please enter a URL to open.', 'warning');
+            }
+        });
+         modalAnnounceBtn.addEventListener('click', () => {
+            const message = modalAnnounceInput.value.trim();
+            if (currentModalClientId && message) {
+                sendTeacherCommand(currentModalClientId, 'send_announcement', { message: message, duration: 7000 }); // Send message with 7s duration
+                showToast(`Sent announcement to ${students.get(currentModalClientId)?.email || currentModalClientId}`, 'info');
+                modalAnnounceInput.value = ''; // Clear input
+            } else if (!message) {
+                 showToast('Please enter an announcement message.', 'warning');
+            }
+        });
+
+        // Navigation Links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = link.dataset.section;
+                setActiveSection(sectionId);
+                // Update URL hash (optional, but good practice)
+                window.location.hash = sectionId;
+            });
+        });
+
+        // Mobile Sidebar Toggle
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.add('open');
+            sidebarBackdrop.style.display = 'block';
+        });
+
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            sidebarBackdrop.style.display = 'none';
+        });
+
+        sidebarBackdrop.addEventListener('click', () => {
+             sidebar.classList.remove('open');
+             sidebarBackdrop.style.display = 'none';
+        });
+
+        // --- Settings Actions (Implemented) ---
+        settingsSaveScreenshotIntervalBtn.addEventListener('click', () => {
+            const interval = parseInt(settingsScreenshotIntervalInput.value, 10);
+            if (!isNaN(interval) && interval >= 1000) {
+                if (students.size === 0) {
+                     showToast('No students connected to send settings to.', 'warning');
+                     return;
+                 }
+                 console.log(`Sending interval ${interval}ms to ${students.size} students.`);
+                 let count = 0;
+                 students.forEach((student, clientId) => {
+                     sendTeacherCommand(clientId, 'set_screenshot_interval', { interval: interval });
+                     count++;
+                 });
+                 showToast(`Sent interval update (${interval}ms) command to ${count} student(s).`, 'info');
+            } else {
+                 showToast('Invalid interval. Must be a number >= 1000.', 'warning');
+            }
+        });
+
+         settingsSaveBlocklistBtn.addEventListener('click', () => {
+            const blocklistText = settingsBlocklistTextarea.value.trim();
+             // Split by newline, trim whitespace, filter out empty lines
+            const blockedSites = blocklistText ? blocklistText.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+             if (students.size === 0) {
+                 showToast('No students connected to send settings to.', 'warning');
+                 return;
+             }
+             console.log(`Sending blocklist update to ${students.size} students:`, blockedSites);
+             let count = 0;
+             students.forEach((student, clientId) => {
+                sendTeacherCommand(clientId, 'update_blocklist', { blockedSites: blockedSites });
+                count++;
+            });
+             showToast(`Sent blocklist update command to ${count} student(s).`, 'info');
+         });
+
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Initialize SortableJS for drag & drop
+            new Sortable(studentGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                handle: '.student-card', // Allows dragging the whole card
+                filter: '.action-btn', // Prevent starting drag from buttons
+                 onEnd: function (evt) {
+                     // Optional: Handle reordering logic if persistence is needed
+                     console.log('Item reordered:', evt.oldIndex, '->', evt.newIndex);
+                 },
+            });
+
+             // Set initial section based on hash or default to dashboard
+             const hash = window.location.hash.substring(1);
+             // Ensure the hash corresponds to a valid section before setting it
+             const validSections = Array.from(navLinks).map(link => link.dataset.section);
+             const initialSection = validSections.includes(hash) ? hash : 'dashboard';
+             setActiveSection(initialSection);
+
+            // Start WebSocket connection
+            connectWebSocket();
+
+             // Initial check for empty grid & report dropdown
+             checkEmptyGrid();
+             updateReportStudentDropdown(); // Initial population
+        });
+
+    </script>
 </body>
 </html>
