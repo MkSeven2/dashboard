@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saber - Classroom Monitoring</title>
+    <link rel="icon" type="image/png" href="https://placehold.co/32x32/4f46e5/ffffff?text=S">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hero-bg { background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); }
+        .btn { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150; }
+        .btn-primary { @apply text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500; }
+        /* Simple Toast Styles (Add more if needed) */
+        #toast-container { position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; width: 20rem; }
+        .toast { background-color: #333; color: white; padding: 0.75rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); font-size: 0.875rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.3s ease-out; opacity: 0; transform: translateX(100%); }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast-icon { flex-shrink: 0; }
+        .toast-message { flex-grow: 1; }
+        .toast-close { margin-left: auto; color: #a0aec0; background: none; border: none; cursor: pointer; }
+        .toast-close:hover { color: white; }
+        .toast.warning { background-color: #f59e0b; color: black; } /* Tailwind amber-500 */
+        .toast.warning .toast-close { color: #78350f; } /* amber-900 */
+        .toast.warning .toast-close:hover { color: black; }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div>
+                <a href="main.html" class="text-2xl font-bold text-indigo-600">Saber</a>
+            </div>
+            <div>
+                <a href="login.html" class="btn btn-primary">
+                    Teacher Dashboard Login
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero-bg py-20">
+         <div class="container mx-auto px-6 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Focus on Teaching, Not Distractions</h1>
+            <p class="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">Saber provides simple, real-time classroom screen monitoring to help you keep students on track and engaged.</p>
+            <a href="login.html" class="btn btn-primary text-lg py-3 px-6 font-semibold">
+                Access Your Dashboard
+            </a>
+        </div>
+    </section>
+
+    <section class="py-16 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Why Choose Saber?</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center p-6 border border-gray-200 rounded-lg shadow-sm">
+                    <div class="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600"> <i data-lucide="monitor" class="h-6 w-6"></i> </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Real-Time Screen Views</h3> <p class="text-gray-600">See what your students are working on instantly.</p>
+                </div>
+                <div class="text-center p-6 border border-gray-200 rounded-lg shadow-sm">
+                     <div class="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600"> <i data-lucide="zap-off" class="h-6 w-6"></i> </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Simple Controls</h3> <p class="text-gray-600">Easily lock screens, close tabs, or send messages.</p>
+                </div>
+                <div class="text-center p-6 border border-gray-200 rounded-lg shadow-sm">
+                     <div class="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 text-indigo-600"> <i data-lucide="lock" class="h-6 w-6"></i> </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Secure Login</h3> <p class="text-gray-600">Powered by Auth0 for robust and secure authentication.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-gray-800 text-gray-300 py-8">
+         <div class="container mx-auto px-6 text-center">
+            <p>&copy; 2025 Saber Monitoring. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <div id="toast-container">
+        </div>
+
+    <script>
+        // --- Simple Toast Functionality for main.html ---
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toastElement = document.createElement('div');
+            toastElement.className = `toast ${type}`; // Add type class for styling
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'toast-icon';
+            // Basic icon mapping (requires Lucide to be loaded)
+            let iconName = 'info';
+            if (type === 'warning') iconName = 'alert-triangle';
+            if (type === 'error') iconName = 'alert-circle';
+            iconSpan.innerHTML = `<i data-lucide="${iconName}" class="lucide w-5 h-5"></i>`;
+
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'toast-message';
+            messageSpan.textContent = message;
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'toast-close';
+            closeButton.innerHTML = '<i data-lucide="x" class="lucide w-4 h-4"></i>';
+            closeButton.onclick = () => dismissToast(toastElement);
+
+            toastElement.appendChild(iconSpan);
+            toastElement.appendChild(messageSpan);
+            toastElement.appendChild(closeButton);
+            container.appendChild(toastElement);
+            lucide.createIcons(); // Render icons
+
+            // Trigger show animation
+            requestAnimationFrame(() => {
+                toastElement.classList.add('show');
+            });
+
+            // Auto dismiss
+            const timeoutId = setTimeout(() => dismissToast(toastElement), duration);
+            toastElement.dataset.dismissTimeoutId = timeoutId;
+        }
+
+        function dismissToast(toastElement) {
+            if (!toastElement) return;
+            const timeoutId = toastElement.dataset.dismissTimeoutId;
+            if (timeoutId) clearTimeout(timeoutId);
+            toastElement.style.opacity = '0';
+            toastElement.style.transform = 'translateX(100%)';
+            setTimeout(() => toastElement.remove(), 300);
+        }
+
+        // --- Check for Access Denied Message on Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons(); // Initialize icons in static content
+
+            // Check sessionStorage for the flag
+            const accessDenied = sessionStorage.getItem('saberAccessDenied');
+            if (accessDenied) {
+                showToast('Access Denied: Your email domain is not authorized.', 'warning', 8000);
+                // Clear the flag so it doesn't show again on refresh
+                sessionStorage.removeItem('saberAccessDenied');
+            }
+        });
+    </script>
+
+</body>
+</html>
